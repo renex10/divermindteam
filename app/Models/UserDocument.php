@@ -9,4 +9,11 @@ class UserDocument extends Model
 {
     /** @use HasFactory<\Database\Factories\UserDocumentFactory> */
     use HasFactory;
+    
+    protected $table = 'user_documents';
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

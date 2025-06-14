@@ -6,29 +6,27 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('course_students', function (Blueprint $table) {
-      $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade'); 
-            $table->foreignId('course_id')->constrained()->onDelete('cascade'); 
+            $table->engine = 'InnoDB';
+            $table->id();
+
+            // Claves foráneas correctamente formadas
+            $table->foreignId('student_id')->constrained('students')->onDelete('cascade')->onUpdate('cascade');
+            $table->foreignId('course_id')->constrained('courses')->onDelete('cascade')->onUpdate('cascade');
+
             $table->timestamps();
 
-            // Relación entre estudiantes y cursos
-            // Relación con la tabla 'courses' para asignar estudiantes a un curso
-
-
+            // Índice único para evitar registros duplicados
+            $table->unique(['student_id', 'course_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('course_students');
     }
 };
+
+ 

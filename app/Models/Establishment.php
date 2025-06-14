@@ -9,4 +9,6 @@ class Establishment extends Model
 {
     /** @use HasFactory<\Database\Factories\EstablishmentFactory> */
     use HasFactory;
+
+
 }

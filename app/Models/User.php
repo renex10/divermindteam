@@ -64,4 +64,19 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function document()
+{
+    return $this->hasOne(UserDocument::class);
+}
+
+public function schedule()
+{
+    return $this->hasOne(UserSchedule::class);
+}
+
+public function getWeeklyHoursAttribute()
+{
+    return $this->schedule?->weekly_hours ?? 0;
+}
 }
