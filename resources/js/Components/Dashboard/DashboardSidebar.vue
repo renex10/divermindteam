@@ -119,10 +119,10 @@ const menuItems = ref([
     badge: null
   },
   {
-    id: 'users',
-    label: 'Usuarios',
+    id: 'estudiantes',
+    label: 'Estudiantes',
     icon: UsersIcon,
-    href: '/users',
+    href: '/estudiantes',
     badge: { text: '12', color: 'bg-blue-600' }
   },
   {

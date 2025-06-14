@@ -46,4 +46,20 @@ class Student extends Model
         return $this->belongsToMany(Course::class, 'course_students')
             ->withTimestamps();
     }
+
+    // En app/Models/Student.php
+public function getFullNameAttribute()
+{
+    return $this->user->name;
+}
+
+public function getFirstNameAttribute()
+{
+    return explode(' ', $this->user->name)[0];
+}
+
+public function getLastNameAttribute()
+{
+    return explode(' ', $this->user->name, 2)[1] ?? '';
+}
 }

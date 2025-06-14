@@ -12,7 +12,7 @@ return new class extends Migration
             $table->engine = 'InnoDB';
             $table->id(); // Asegurar BIGINT UNSIGNED con AUTO_INCREMENT
 
-            // Relación opcional con usuarios
+            // Relación con usuarios (no almacena datos personales duplicados)
             $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null')->onUpdate('cascade');
 
             // Relación con documentos de identificación
@@ -21,12 +21,8 @@ return new class extends Migration
             // Relación con cursos
             $table->foreignId('course_id')->nullable()->constrained('courses')->onDelete('set null')->onUpdate('cascade');
 
-            // Datos personales
-            $table->string('first_name', 100);
-            $table->string('last_name', 100);
+            // Datos exclusivos del estudiante (sin redundancia)
             $table->date('birth_date');
-
-            // Datos PIE
             $table->enum('need_type', ['permanent', 'temporary'])->default('temporary');
             $table->text('diagnosis')->nullable();
             $table->tinyInteger('priority')->default(3)->comment('1: Máxima, 2: Media, 3: Básica');

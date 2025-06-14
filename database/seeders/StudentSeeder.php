@@ -26,7 +26,6 @@ class StudentSeeder extends Seeder
      */
     public function run(): void
     {
-        // Verificar prerequisitos
         if (Course::count() == 0) {
             $this->command->error('Primero ejecute CourseSeeder!');
             return;
@@ -56,38 +55,21 @@ class StudentSeeder extends Seeder
         } catch (\Exception $e) {
             DB::rollBack();
             $this->command->error('❌ Error: ' . $e->getMessage());
-            $this->command->error('Línea: ' . $e->getLine());
             throw $e;
         }
     }
 
-    /**
-     * Crea un estudiante individual con todas sus relaciones
-     */
     private function createStudent(Course $course): void
     {
-        // 1. Crear usuario
         $user = $this->createUser($course);
-
-        // 2. Crear documento
         $document = $this->createUserDocument($user);
-
-        // 3. Crear estudiante
-        $student = $this->createStudentRecord($user, $document, $course);
-
-        // 4. Relacionar estudiante con curso
-        $this->linkStudentToCourse($student, $course);
+        $this->createStudentRecord($user, $document, $course);
     }
 
-    /**
-     * Crea un usuario para el estudiante
-     */
     private function createUser(Course $course): User
     {
         $email = $this->generateUniqueEmail();
-        $firstName = $this->faker->firstName();
-        $lastName = $this->faker->lastName();
-        $fullName = "{$firstName} {$lastName}";
+        $fullName = $this->faker->firstName() . ' ' . $this->faker->lastName();
 
         return User::create([
             'name' => $fullName,
@@ -98,9 +80,6 @@ class StudentSeeder extends Seeder
         ]);
     }
 
-    /**
-     * Crea el documento de identidad del usuario
-     */
     private function createUserDocument(User $user): UserDocument
     {
         $rut = $this->generateUniqueRut();
@@ -108,19 +87,12 @@ class StudentSeeder extends Seeder
         return UserDocument::create([
             'user_id' => $user->id,
             'rut' => $rut,
-            'verified' => $this->faker->boolean(30), // 30% probabilidad de estar verificado
+            'verified' => $this->faker->boolean(30),
         ]);
     }
 
-    /**
-     * Crea el registro del estudiante
-     */
     private function createStudentRecord(User $user, UserDocument $document, Course $course): Student
     {
-        $nameParts = explode(' ', $user->name);
-        $firstName = $nameParts[0];
-        $lastName = isset($nameParts[1]) ? $nameParts[1] : $this->faker->lastName();
-
         $needType = $this->faker->randomElement(['permanent', 'temporary']);
         $diagnosis = $this->generateDiagnosis($needType);
 
@@ -128,40 +100,14 @@ class StudentSeeder extends Seeder
             'user_id' => $user->id,
             'document_id' => $document->id,
             'course_id' => $course->id,
-            'first_name' => $firstName,
-            'last_name' => $lastName,
             'birth_date' => $this->faker->dateTimeBetween('-18 years', '-6 years')->format('Y-m-d'),
             'need_type' => $needType,
             'diagnosis' => $diagnosis,
             'priority' => $this->determinePriority($diagnosis),
-            'active' => $this->faker->boolean(95), // 95% activos
+            'active' => $this->faker->boolean(95),
         ]);
     }
 
-    /**
-     * Relaciona el estudiante con el curso en la tabla pivot
-     */
-    private function linkStudentToCourse(Student $student, Course $course): void
-    {
-        // Verificar que no exista ya la relación
-        $exists = DB::table('course_students')
-            ->where('student_id', $student->id)
-            ->where('course_id', $course->id)
-            ->exists();
-
-        if (!$exists) {
-            DB::table('course_students')->insert([
-                'student_id' => $student->id,
-                'course_id' => $course->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-    }
-
-    /**
-     * Genera un email único
-     */
     private function generateUniqueEmail(): string
     {
         $maxAttempts = 10;
@@ -172,7 +118,6 @@ class StudentSeeder extends Seeder
             $attempts++;
             
             if ($attempts > $maxAttempts) {
-                // Generar email más único si hay muchos intentos
                 $email = 'student_' . uniqid() . '@' . $this->faker->domainName();
                 break;
             }
@@ -182,9 +127,6 @@ class StudentSeeder extends Seeder
         return $email;
     }
 
-    /**
-     * Genera un RUT único
-     */
     private function generateUniqueRut(): string
     {
         $maxAttempts = 10;
@@ -195,7 +137,6 @@ class StudentSeeder extends Seeder
             $attempts++;
             
             if ($attempts > $maxAttempts) {
-                // Generar RUT más único si hay muchos intentos
                 $number = rand(10000000, 24999999);
                 $rut = $number . '-' . $this->calculateVerifierDigit($number);
                 break;
@@ -206,9 +147,6 @@ class StudentSeeder extends Seeder
         return $rut;
     }
 
-    /**
-     * Genera un RUT chileno válido
-     */
     private function generateChileanRut(): string
     {
         $number = rand(5000000, 24999999);
@@ -216,9 +154,6 @@ class StudentSeeder extends Seeder
         return $number . '-' . $dv;
     }
 
-    /**
-     * Calcula el dígito verificador de un RUT chileno
-     */
     private function calculateVerifierDigit(int $number): string
     {
         $s = 1;
@@ -228,60 +163,32 @@ class StudentSeeder extends Seeder
         return $s ? chr($s + 47) : 'K';
     }
 
-    /**
-     * Genera diagnóstico según tipo de necesidad
-     */
     private function generateDiagnosis(string $needType): string
     {
-        $permanentDiagnoses = [
-            'Discapacidad intelectual leve',
+        $permanent = [
             'Discapacidad intelectual moderada',
-            'Trastorno del espectro autista nivel 1',
             'Trastorno del espectro autista nivel 2',
-            'Parálisis cerebral',
-            'Síndrome de Down',
-            'Discapacidad visual',
-            'Discapacidad auditiva'
+            'Parálisis cerebral'
         ];
 
-        $temporaryDiagnoses = [
-            'Trastorno específico del aprendizaje en lectura',
-            'Trastorno específico del aprendizaje en matemáticas',
-            'Déficit atencional con hiperactividad',
-            'Déficit atencional sin hiperactividad',
-            'Disfasia expresiva',
-            'Disfasia mixta',
-            'Trastorno del lenguaje',
-            'Dificultades de aprendizaje'
+        $temporary = [
+            'Trastorno específico del aprendizaje',
+            'Déficit atencional',
+            'Disfasia'
         ];
 
-        $diagnoses = $needType === 'permanent' ? $permanentDiagnoses : $temporaryDiagnoses;
-        return $diagnoses[array_rand($diagnoses)];
+        return $needType === 'permanent' 
+            ? $permanent[array_rand($permanent)]
+            : $temporary[array_rand($temporary)];
     }
 
-    /**
-     * Determina prioridad según diagnóstico
-     */
     private function determinePriority(string $diagnosis): int
     {
-        // Prioridad 1 (Máxima): Discapacidades severas
-        if (str_contains($diagnosis, 'moderada') || 
-            str_contains($diagnosis, 'nivel 2') || 
-            str_contains($diagnosis, 'Parálisis cerebral') ||
-            str_contains($diagnosis, 'Síndrome de Down')) {
+        if (str_contains($diagnosis, 'moderada') || str_contains($diagnosis, 'nivel 2')) {
             return 1;
-        }
-
-        // Prioridad 2 (Media): Trastornos que requieren apoyo constante
-        if (str_contains($diagnosis, 'Déficit atencional') || 
-            str_contains($diagnosis, 'Disfasia') ||
-            str_contains($diagnosis, 'nivel 1') ||
-            str_contains($diagnosis, 'visual') ||
-            str_contains($diagnosis, 'auditiva')) {
+        } elseif (str_contains($diagnosis, 'Déficit') || str_contains($diagnosis, 'Disfasia')) {
             return 2;
         }
-
-        // Prioridad 3 (Básica): Dificultades de aprendizaje
         return 3;
     }
 }

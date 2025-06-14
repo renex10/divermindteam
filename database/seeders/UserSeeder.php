@@ -22,6 +22,7 @@ class UserSeeder extends Seeder
             ['email' => 'reneprh2013@gmail.com'],
             [
                 'name' => 'rene',
+                'last_name' => 'riquelme ',
                 'password' => Hash::make('pangaleluney2013'),
                 'email_verified_at' => now(),
                 'establishment_id' => Establishment::inRandomOrder()->first()->id,
