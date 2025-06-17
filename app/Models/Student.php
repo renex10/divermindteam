@@ -62,4 +62,23 @@ public function getLastNameAttribute()
 {
     return explode(' ', $this->user->name, 2)[1] ?? '';
 }
+
+public function guardianLinks()
+{
+    return $this->hasMany(GuardianStudent::class);
+}
+
+// Si quieres acceso directo al consentimiento del apoderado principal:
+public function primaryGuardianConsent()
+{
+    return $this->hasOneThrough(Consent::class, GuardianStudent::class)
+        ->where('guardian_students.is_primary', true);
+}
+
+public function documents()
+{
+    return $this->morphMany(Document::class, 'documentable');
+}
+
+
 }

@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+
 
 class GuardianStudent extends Model
 {
@@ -30,4 +33,12 @@ class GuardianStudent extends Model
             }
         }
     }
+
+//modelo relación estudiante-apoderado
+     public function consent(): HasOne
+    {
+        return $this->hasOne(Consent::class);
+    }
+
+
 }

@@ -221,7 +221,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 
 // Definición de props que recibe el componente
 const props = defineProps({
@@ -229,6 +229,11 @@ const props = defineProps({
   students: {
     type: [Object, Array],
     required: true
+  },
+  // Prop para controlar el estado de carga
+  loading: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -237,6 +242,8 @@ const emit = defineEmits(['view', 'edit', 'delete', 'page-change'])
 
 // Computed para extraer los datos de estudiantes del objeto de paginación
 const studentsData = computed(() => {
+  if (props.loading) return [] // Retornar array vacío durante la carga
+  
   // Si students es un array, lo devolvemos directamente
   if (Array.isArray(props.students)) {
     return props.students
