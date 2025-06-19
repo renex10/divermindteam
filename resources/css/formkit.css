@@ -1,0 +1,76 @@
+/* Formulario personalizado */
+.formkit-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.formkit-input {
+  display: block;
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.formkit-input:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 2px #e0e7ff;
+}
+
+.formkit-textarea {
+  display: block;
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  resize: vertical;
+}
+
+.formkit-file-input {
+  display: block;
+  width: 100%;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.formkit-file-input::file-selector-button {
+  margin-right: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background-color: #e0e7ff;
+  color: #4f46e5;
+  transition: background-color 0.2s;
+}
+
+.formkit-file-input::file-selector-button:hover {
+  background-color: #c7d2fe;
+}
+
+.formkit-help {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+/* Validación */
+.formkit-messages {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #ef4444;
+}
+
+.formkit-message {
+  display: block;
+}

@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Student\StudentController;
 use App\Models\Professional;
+use App\Models\Course;
 
 // Ruta de inicio (puedes cambiarla)
 Route::get('/', function () {
@@ -53,3 +54,17 @@ Route::get('/api/professionals', function () {
             ];
         });
 })->middleware('auth:sanctum');
+
+
+//para obtener los curso
+
+Route::get('/api/courses', function () {
+    return Course::select('id', 'name')
+        ->orderBy('name')
+        ->get()
+        ->map(fn ($course) => [
+            'value' => $course->id,
+            'label' => $course->name,
+        ])
+        ->values(); // esto asegura que los índices sean limpios
+})->name('api.courses');

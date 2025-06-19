@@ -1,6 +1,4 @@
 <template>
-
-<!--   la ruta del archivo es resources\js\Pages\Student.vue -->
   <DashboardLayout title="Gestión de Estudiantes">
     <template #header>
       <div class="flex justify-between items-center">
@@ -20,19 +18,16 @@
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 rounded-lg shadow text-white">
           <h3 class="text-lg font-medium">Total Estudiantes</h3>
-          <!-- Usamos el total de la paginación, no el length del array actual -->
           <p class="text-3xl font-bold mt-2">{{ students.total || 0 }}</p>
         </div>
 
         <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-lg shadow text-white">
           <h3 class="text-lg font-medium">Estudiantes Activos</h3>
-          <!-- Calculamos solo sobre los estudiantes de la página actual -->
           <p class="text-3xl font-bold mt-2">{{ activeStudentsCount }}</p>
         </div>
 
         <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-6 rounded-lg shadow text-white">
           <h3 class="text-lg font-medium">Prioridad Alta</h3>
-          <!-- Calculamos solo sobre los estudiantes de la página actual -->
           <p class="text-3xl font-bold mt-2">{{ highPriorityCount }}</p>
         </div>
       </div>
@@ -44,8 +39,11 @@
       </div>
     </div>
 
- <FormModal
+    <!-- Modal reemplazado por la nueva estructura -->
+    <StudentFormModal
       :isOpen="showModal"
+      :initialData="initialFormData"
+      :externalData="formExternalData"
       @close="closeModal"
       @submit="handleFormSubmit"
     />
@@ -53,34 +51,43 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'; // Importación corregida
-import { router } from '@inertiajs/vue3'
-import DashboardLayout from '@/Layouts/DashboardLayout.vue'
-import StudentTable from '@/Components/Students/StudentTable.vue'
-import FormModal from '@/Components/Modal/FormModal.vue';
+import { computed, ref, reactive } from 'vue';
+import { router } from '@inertiajs/vue3';
+import DashboardLayout from '@/Layouts/DashboardLayout.vue';
+import StudentTable from '@/Components/Students/StudentTable.vue';
+import StudentFormModal from '@/Components/Modal/StudentFormModal.vue';
 
 // Definir props que recibe el componente desde el controlador
 const props = defineProps({
   students: {
     type: Object,
     required: true
+  },
+  // Agregamos props para cursos y especialistas
+  courses: {
+    type: Array,
+    default: () => []
+  },
+  specialists: {
+    type: Array,
+    default: () => []
   }
-})
+});
 
 // Computed para obtener datos de los estudiantes de la página actual
 const currentStudents = computed(() => {
-  return props.students.data || []
-})
+  return props.students.data || [];
+});
 
 // Computed para contar estudiantes activos en la página actual
 const activeStudentsCount = computed(() => {
-  return currentStudents.value.filter(student => student.active).length
-})
+  return currentStudents.value.filter(student => student.active).length;
+});
 
 // Computed para contar estudiantes con prioridad alta en la página actual
 const highPriorityCount = computed(() => {
-  return currentStudents.value.filter(student => student.priority === 1).length
-})
+  return currentStudents.value.filter(student => student.priority === 1).length;
+});
 
 // Función para manejar cambio de página
 const handlePageChange = (page) => {
@@ -90,23 +97,28 @@ const handlePageChange = (page) => {
       preserveState: true,
       replace: true
     }
-  )
-}
+  );
+};
 
 // Funciones para manejar acciones
 const handleView = (student) => {
   // Lógica para ver estudiante
-}
+};
 
 const handleEdit = (student) => {
   // Lógica para editar estudiante
-}
+};
 
 const handleDelete = (student) => {
   // Lógica para eliminar estudiante
-}
+};
 
 const showModal = ref(false);
+const initialFormData = ref({});
+const formExternalData = reactive({
+  courses: props.courses,
+  specialists: props.specialists
+});
 
 const openModal = () => {
   showModal.value = true;
