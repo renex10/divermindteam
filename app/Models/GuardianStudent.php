@@ -13,6 +13,14 @@ class GuardianStudent extends Model
     /** @use HasFactory<\Database\Factories\GuardianStudentFactory> */
     use HasFactory;
 
+    protected $fillable = [
+    'student_id',
+    'guardian_id',
+    'is_primary',
+    'relationship'
+];
+
+
     public function run(): void
     {
         $students = Student::all();

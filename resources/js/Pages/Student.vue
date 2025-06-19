@@ -1,4 +1,6 @@
 <template>
+
+<!--   la ruta del archivo es resources\js\Pages\Student.vue -->
   <DashboardLayout title="Gestión de Estudiantes">
     <template #header>
       <div class="flex justify-between items-center">
@@ -114,14 +116,44 @@ const closeModal = () => {
   showModal.value = false;
 };
 
-const handleFormSubmit = (formData) => {
-  console.log('Datos del formulario:', formData);
-  // Aquí enviarías los datos al servidor
-  // Ejemplo con Inertia:
-  // router.post(route('students.store'), formData, {
-  //   onSuccess: () => {
-  //     closeModal();
-  //   }
-  // });
+const handleFormSubmit = async (formData) => {
+  try {
+    const form = new FormData();
+    
+    // Agregar todos los campos
+    for (const key in formData) {
+      if (key === 'previous_reports') {
+        // Manejar múltiples archivos
+        formData[key].forEach(file => {
+          form.append('previous_reports[]', file);
+        });
+      } else if (key === 'medical_report') {
+        // Manejar archivo único
+        if (formData[key]) {
+          form.append('medical_report', formData[key]);
+        }
+      } else {
+        // Manejar campos normales
+        form.append(key, formData[key]);
+      }
+    }
+    
+    const response = await axios.post(route('students.store'), form);
+    
+    console.log('Respuesta exitosa:', response.data);
+    closeModal();
+    router.reload(); // Recargar la lista de estudiantes
+    
+  } catch (error) {
+    console.error('Error en la petición:', error);
+    
+    if (error.response) {
+      console.error('Datos del error:', error.response.data);
+      alert(`Error: ${error.response.data.message || error.response.statusText}`);
+    } else {
+      console.error('Error sin respuesta:', error.message);
+      alert('Error de red: ' + error.message);
+    }
+  }
 };
 </script>

@@ -25,13 +25,10 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'last_name',
-        'email',
-        'password',
+      protected $fillable = [
+        // Asegúrate que 'establishment_id' está en el array
+        'name', 'email', 'password', 'establishment_id'
     ];
-
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -80,4 +77,9 @@ public function getWeeklyHoursAttribute()
 {
     return $this->schedule?->weekly_hours ?? 0;
 }
+
+public function establishment()
+    {
+        return $this->belongsTo(Establishment::class);
+    }
 }

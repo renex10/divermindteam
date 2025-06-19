@@ -1,4 +1,5 @@
 <script setup>
+/* la ruta del archivo es resources\js\Layouts\DashboardLayout.vue */
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 // Importa tus componentes personalizados

@@ -18,7 +18,7 @@ public function schedules()
 // app/Models/CourseSchedule.php
 public function course()
 {
-    return $this->belongsTo(Course::class);
+     return $this->belongsTo(Course::class, 'course_id');
 }
 
 // Para integración con sesiones PIE

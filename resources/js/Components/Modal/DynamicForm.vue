@@ -1,4 +1,5 @@
 <template>
+<!-- la ruta de este archivo es resources\js\Components\Modal\DynamicForm.vue -->
 
 <!--      crea un componente de formulario genérico -->
   <FormKit

@@ -12,12 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('professionals', function (Blueprint $table) {
- $table->id();
+            $table->id();
             $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade')->comment('1:1 relation with users table');
             $table->foreignId('specialty_id')->constrained('specialties')->onDelete('restrict')->comment('Primary specialty');
             $table->boolean('active')->default(true)->comment('Is the professional active in the system?');
             $table->timestamps();
-
         });
     }
 

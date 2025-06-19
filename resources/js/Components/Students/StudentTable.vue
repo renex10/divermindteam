@@ -1,4 +1,5 @@
 <template>
+<!--   la rut del archivo resources\js\Components\Students\StudentTable.vue -->
   <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
     <!-- Tabla de estudiantes -->
     <table class="min-w-full divide-y divide-gray-300">

@@ -9,6 +9,14 @@ class Document extends Model
 {
     /** @use HasFactory<\Database\Factories\DocumentFactory> */
     use HasFactory;
+    protected $fillable = [
+    'documentable_id',
+    'documentable_type',
+    'type',
+    'path',
+    'format',
+    'description'
+];
 
     public function student()
 {
