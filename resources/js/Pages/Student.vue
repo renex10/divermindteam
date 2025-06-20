@@ -1,4 +1,5 @@
 <template>
+<!--   resources\js\Pages\Student.vue -->
   <DashboardLayout title="Gestión de Estudiantes">
     <template #header>
       <div class="flex justify-between items-center">
@@ -51,7 +52,7 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive } from 'vue';
+import { computed, ref, reactive, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import StudentTable from '@/Components/Students/StudentTable.vue';
@@ -71,8 +72,27 @@ const props = defineProps({
   specialists: {
     type: Array,
     default: () => []
+  },
+
+  isCreateView: { // Añadir esta prop
+    type: Boolean,
+    default: false
   }
 });
+
+// Abrir modal automáticamente si es vista de creación
+onMounted(() => {
+  if (props.isCreateView) {
+    openModal();
+  }
+});
+
+// Asegurar que courses siempre es un array
+const formExternalData = reactive({
+  courses: props.courses || [],
+  specialists: props.specialists || []
+});
+
 
 // Computed para obtener datos de los estudiantes de la página actual
 const currentStudents = computed(() => {
@@ -115,10 +135,11 @@ const handleDelete = (student) => {
 
 const showModal = ref(false);
 const initialFormData = ref({});
-const formExternalData = reactive({
+/* const formExternalData = reactive({
   courses: props.courses,
   specialists: props.specialists
-});
+}); */
+
 
 const openModal = () => {
   showModal.value = true;
@@ -168,4 +189,18 @@ const handleFormSubmit = async (formData) => {
     }
   }
 };
+
+
+// DEBUG: Verificar props
+console.log("Student.vue - Props recibidas:", {
+  students: props.students,
+  courses: props.courses,
+  specialists: props.specialists
+});
+
+console.log("formExternalData creado:", formExternalData);
+
+console.log("Rene Cursos recibidos en Student.vue:", props.courses);
+
+
 </script>

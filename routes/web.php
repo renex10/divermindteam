@@ -23,7 +23,7 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    
+
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/analytics', [DashboardController::class, 'analytics'])->name('analytics');
 });
@@ -33,38 +33,7 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     ->group(function () {
         Route::get('/estudiantes', [StudentController::class, 'index'])->name('students.index');
         Route::post('/estudiantes', [StudentController::class, 'store'])->name('students.store');
+        // routes/web.php
+      /*   Route::get('/estudiantes/crear', [StudentController::class, 'create'])
+            ->name('students.create'); */
     });
-
-// Nueva ruta API para obtener profesionales
-Route::get('/api/professionals', function () {
-    return Professional::with(['user', 'specialty'])
-        ->where('active', true)
-        ->get()
-        ->map(function ($prof) {
-            return [
-                'id' => $prof->id,
-                'user' => [
-                    'id' => $prof->user->id,
-                    'name' => $prof->user->name
-                ],
-                'specialty' => [
-                    'id' => $prof->specialty->id,
-                    'name' => $prof->specialty->name
-                ]
-            ];
-        });
-})->middleware('auth:sanctum');
-
-
-//para obtener los curso
-
-Route::get('/api/courses', function () {
-    return Course::select('id', 'name')
-        ->orderBy('name')
-        ->get()
-        ->map(fn ($course) => [
-            'value' => $course->id,
-            'label' => $course->name,
-        ])
-        ->values(); // esto asegura que los índices sean limpios
-})->name('api.courses');

@@ -56,7 +56,7 @@
         v-model="formData.course_id"
         name="course_id"
         label="Curso *"
-        :options="externalData.courses"
+        :options="courseOptions"
         placeholder="Seleccione curso"
         validation="required"
         outer-class="mb-0"
@@ -118,19 +118,56 @@
 
 <script setup>
 import { InformationCircleIcon, CheckCircleIcon } from '@heroicons/vue/24/outline';
+import { computed, onMounted } from 'vue';
 
-defineProps({
-  formData: {
-    type: Object,
-    required: true
-  },
-  externalData: {
-    type: Object,
-    default: () => ({})
-  },
-  showNextSteps: {
-    type: Boolean,
-    default: true
+const props = defineProps({
+  formData: Object,
+  externalData: Object,
+  showNextSteps: Boolean
+});
+
+// Verificar la llegada de props
+console.log("BasicDataStep - Props recibidas:", {
+  formData: props.formData,
+  externalData: props.externalData,
+  showNextSteps: props.showNextSteps
+});
+
+// Verificar específicamente los cursos
+console.log("Cursos recibidos en externalData:", 
+  props.externalData?.courses ? props.externalData.courses : "UNDEFINED");
+
+// Transformar cursos
+const courseOptions = computed(() => {
+  console.log("Transformando cursos...");
+  
+  if (!props.externalData?.courses) {
+    console.warn("No se encontró 'courses' en externalData");
+    return [];
   }
+  
+  if (!Array.isArray(props.externalData.courses)) {
+    console.error("'courses' no es un array:", typeof props.externalData.courses);
+    return [];
+  }
+  
+  const options = props.externalData.courses.map(course => {
+    if (!course.id || !course.name) {
+      console.warn("Curso con formato inválido:", course);
+      return null;
+    }
+    return {
+      value: course.id,
+      label: course.name
+    };
+  }).filter(Boolean);
+  
+  console.log("Opciones transformadas:", options);
+  return options;
+});
+
+// Verificar cuando el componente se monta
+onMounted(() => {
+  console.log("BasicDataStep montado");
 });
 </script>

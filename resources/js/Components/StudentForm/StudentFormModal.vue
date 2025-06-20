@@ -73,4 +73,12 @@ const closeModal = () => {
 const handleSubmit = () => {
   emit('submit', formData);
 };
+
+
+// DEBUG: Verificar props
+console.log("StudentFormModal - Props recibidas:", {
+  isOpen: props.isOpen,
+  initialData: props.initialData,
+  externalData: props.externalData
+});
 </script>
