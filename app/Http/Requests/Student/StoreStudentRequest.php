@@ -23,7 +23,7 @@ class StoreStudentRequest extends FormRequest
     {
         /*   etapa 1 */
         return [
-            // Etapa 1: Datos Básicos
+            // Etapa 1: Datos Básicos este tiene que ver con el archivo app\Http\Requests\Student\StoreStudentRequest.php
             'full_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'rut' => ['required', 'string', 'max:20', 'unique:students,rut'],
@@ -32,7 +32,7 @@ class StoreStudentRequest extends FormRequest
             'diagnosis' => ['nullable', 'string', 'max:255'],
             'guardian_email' => ['nullable', 'email', 'max:255'],
 
-            // Etapa 2: Documentos
+            // Etapa 2: Documentos esto se mantien igual
             'medical_report' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,png', 'max:5120'],
             'previous_reports.*' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
 

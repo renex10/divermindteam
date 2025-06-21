@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\Student;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use App\Models\Student;
@@ -10,9 +11,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Course;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Professional;
+use App\Models\UserDocument;
+use App\Models\User; // Importar modelo User
 
 class StudentController extends Controller
 {
+    /**
+     * Muestra el listado paginado de estudiantes
+     * 
+     * @param Request $request
+     * @return \Inertia\Response
+     */
     public function index(Request $request)
     {
         // Obtener parámetros de paginación desde la request
@@ -21,9 +32,9 @@ class StudentController extends Controller
 
         // Consulta optimizada con relaciones y ordenamiento
         $studentsQuery = Student::with(['user' => function ($query) {
-            $query->orderBy('last_name', 'asc')
-                ->orderBy('name', 'asc');
-        }])
+                $query->orderBy('last_name', 'asc')
+                    ->orderBy('name', 'asc');
+            }])
             ->orderBy('priority', 'asc')
             ->orderBy('created_at', 'desc');
 
@@ -44,23 +55,58 @@ class StudentController extends Controller
             'links' => $students->linkCollection()
         ];
 
-        // AGREGAR: Obtener cursos para el formulario
+        // Obtener cursos para el formulario
         $courses = Course::orderBy('name')->get();
         
-        // DEBUG: Log para verificar cursos
-        Log::debug('Cursos en index:', [
-            'count' => $courses->count(),
-            'courses' => $courses->toArray()
+        // Obtener especialistas activos con sus datos de usuario
+        $specialists = Professional::with(['user:id,name,last_name', 'specialty:id,name'])
+            ->where('active', true)
+            ->get()
+            ->map(function ($professional) {
+                return [
+                    'id' => $professional->id,
+                    'name' => $professional->user->name,
+                    'last_name' => $professional->user->last_name,
+                    'specialty' => $professional->specialty->name,
+                    'full_name' => $professional->user->name . ' ' . $professional->user->last_name
+                ];
+            });
+
+        // Obtener usuarios con su RUT para el selector
+        $users = User::with('document')
+            ->get()
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'last_name' => $user->last_name,
+                    'rut' => $user->document->rut ?? 'Sin RUT'
+                ];
+            });
+
+        // Debug: Verificar datos obtenidos
+        Log::debug('Datos para vista Student:', [
+            'students_count' => $students->total(),
+            'courses_count' => $courses->count(),
+            'specialists_count' => $specialists->count(),
+            'users_count' => $users->count(),
+            'first_user' => $users->first()
         ]);
 
-        // Retornar vista con datos transformados, paginados Y cursos
+        // Retornar vista con todos los datos necesarios
         return Inertia::render('Student', [
             'students' => $transformedStudents,
-            'courses' => $courses, // AGREGAR esta línea
-            'specialists' => [], // Agregar si tienes especialistas
+            'courses' => $courses,
+            'specialists' => $specialists,
+            'users' => $users // 👈 Enviar usuarios formateados
         ]);
     }
 
+    /**
+     * Muestra el formulario de creación de estudiantes
+     * 
+     * @return \Inertia\Response
+     */
     public function create()
     {
         try {
@@ -68,16 +114,56 @@ class StudentController extends Controller
             DB::connection()->getPdo();
             Log::debug('Conexión a la base de datos exitosa');
 
-            // Verificar existencia de la tabla
-            $tableExists = Schema::hasTable('courses');
-            Log::debug('Tabla courses existe: ' . ($tableExists ? 'Sí' : 'No'));
+            // Verificar existencia de tablas necesarias
+            $coursesTableExists = Schema::hasTable('courses');
+            $professionalsTableExists = Schema::hasTable('professionals');
+            $usersTableExists = Schema::hasTable('users');
+            Log::debug('Tablas existentes:', [
+                'courses' => $coursesTableExists,
+                'professionals' => $professionalsTableExists,
+                'users' => $usersTableExists
+            ]);
 
             // Obtener cursos
             $courses = Course::orderBy('name')->get();
             
-            Log::debug('Cursos obtenidos en create:', [
-                'count' => $courses->count(),
-                'courses' => $courses->toArray()
+            // Obtener especialistas activos
+            $specialists = [];
+            if ($professionalsTableExists) {
+                $specialists = Professional::with(['user:id,name,last_name', 'specialty:id,name'])
+                    ->where('active', true)
+                    ->get()
+                    ->map(function ($professional) {
+                        return [
+                            'id' => $professional->id,
+                            'name' => $professional->user->name,
+                            'last_name' => $professional->user->last_name,
+                            'specialty' => $professional->specialty->name,
+                            'full_name' => $professional->user->name . ' ' . $professional->user->last_name
+                        ];
+                    });
+            }
+
+            // Obtener usuarios con su RUT
+            $users = [];
+            if ($usersTableExists) {
+                $users = User::with('document')
+                    ->get()
+                    ->map(function ($user) {
+                        return [
+                            'id' => $user->id,
+                            'name' => $user->name,
+                            'last_name' => $user->last_name,
+                            'rut' => $user->document->rut ?? 'Sin RUT'
+                        ];
+                    });
+            }
+
+            Log::debug('Datos obtenidos en create:', [
+                'courses_count' => $courses->count(),
+                'specialists_count' => count($specialists),
+                'users_count' => count($users),
+                'first_user' => $users[0] ?? null
             ]);
             
             // Si no hay cursos, crear uno de prueba
@@ -87,7 +173,8 @@ class StudentController extends Controller
                 try {
                     $testCourse = Course::create([
                         'name' => 'Curso de Prueba',
-                        // Agregar otros campos requeridos si los hay
+                        'level' => 'Básico',
+                        'parallel' => 'A'
                     ]);
                     $courses = Course::orderBy('name')->get();
                     Log::debug('Curso de prueba creado', $testCourse->toArray());
@@ -108,14 +195,15 @@ class StudentController extends Controller
                 'total' => 0,
                 'from' => 0,
                 'to' => 0,
-                'path' => '',
+                'path' => route('students.index'),
                 'links' => []
             ];
 
             return Inertia::render('Student', [
                 'students' => $emptyStudents,
                 'courses' => $courses,
-                'specialists' => [], // Agregar especialistas si los tienes
+                'specialists' => $specialists,
+                'users' => $users, // 👈 Usuarios incluidos
                 'isCreateView' => true
             ]);
             
@@ -126,36 +214,129 @@ class StudentController extends Controller
             ]);
             
             return Inertia::render('Error', [
-                'message' => 'Error al cargar los cursos: ' . $e->getMessage()
+                'message' => 'Error al cargar los datos: ' . $e->getMessage()
             ]);
         }
     }
 
-    public function store(Request $request)
-    {
-        // Agregar método store si no existe
-        try {
-            // Validar datos
-            $validated = $request->validate([
-                'course_id' => 'required|exists:courses,id',
-                // Agregar otras validaciones necesarias
-            ]);
+    /**
+     * Almacena un nuevo estudiante en la base de datos
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+public function store(Request $request)
+{
+    DB::beginTransaction();
 
-            // Crear estudiante
-            $student = Student::create($validated);
-
-            Log::info('Estudiante creado exitosamente:', $student->toArray());
-
-            return redirect()->route('students.index')
-                ->with('success', 'Estudiante creado exitosamente');
-
-        } catch (\Exception $e) {
-            Log::error('Error al crear estudiante:', [
-                'error' => $e->getMessage(),
-                'request_data' => $request->all()
-            ]);
-
-            return back()->withErrors(['error' => 'Error al crear estudiante: ' . $e->getMessage()]);
+    try {
+        // Decodificar new_user si viene como JSON (opcional)
+        if ($request->has('new_user') && is_string($request->input('new_user'))) {
+            $newUserData = json_decode($request->input('new_user'), true);
+            $request->merge(['new_user' => $newUserData]);
         }
+
+        // Validación de campos
+        $validated = $request->validate([
+            // Nuevo usuario
+            'new_user.name' => 'required|string|max:255',
+            'new_user.last_name' => 'required|string|max:255',
+            'new_user.email' => 'required|email|unique:users,email',
+            'new_user.password' => 'required|string|min:8',
+
+            // Datos comunes del estudiante
+            'birth_date' => 'required|date',
+            'course_id' => 'required|exists:courses,id',
+            'diagnosis' => 'nullable|string',
+            'guardian_email' => 'nullable|email',
+
+            // Documentos
+            'medical_report' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:5120',
+            'previous_reports.*' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+
+            // Clasificación
+            'need_type' => 'required|in:permanent,temporary',
+            'priority' => 'required|integer|min:1|max:3',
+            'special_needs' => 'nullable|string',
+
+            // Consentimientos
+            'consent_pie' => 'required|boolean',
+            'data_processing' => 'required|boolean',
+            'guardian_name' => 'required_if:consent_pie,1|string|max:255',
+            'guardian_rut' => 'required_if:consent_pie,1|string|max:20',
+
+            // Asignación
+            'assigned_specialist' => 'required|exists:professionals,id',
+            'evaluation_date' => 'required|date',
+            'initial_observations' => 'nullable|string',
+        ]);
+
+        // Crear nuevo usuario
+        $user = User::create([
+            'name' => $validated['new_user']['name'],
+            'last_name' => $validated['new_user']['last_name'],
+            'email' => $validated['new_user']['email'],
+            'password' => Hash::make($validated['new_user']['password']),
+            'establishment_id' => Auth::user()->establishment_id,
+        ]);
+
+        // Log: usuario creado
+        Log::info('Usuario creado exitosamente', [
+            'user_id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email
+        ]);
+
+        $rut = 'SIN-RUT-' . $user->id;
+
+        // Guardar archivos
+        $medicalReportPath = $request->file('medical_report')->store('medical_reports');
+        $previousReportsPaths = [];
+
+        if ($request->hasFile('previous_reports')) {
+            foreach ($request->file('previous_reports') as $file) {
+                $previousReportsPaths[] = $file->store('previous_reports');
+            }
+        }
+
+        // Crear estudiante
+        $student = Student::create([
+            'user_id' => $user->id,
+            'rut' => $rut,
+            'birth_date' => $validated['birth_date'],
+            'course_id' => $validated['course_id'],
+            'diagnosis' => $validated['diagnosis'] ?? null,
+            'guardian_email' => $validated['guardian_email'] ?? null,
+            'medical_report_path' => $medicalReportPath,
+            'previous_reports_paths' => json_encode($previousReportsPaths),
+            'need_type' => $validated['need_type'],
+            'priority' => $validated['priority'],
+            'special_needs' => $validated['special_needs'] ?? null,
+            'consent_pie' => $validated['consent_pie'] ? 1 : 0,
+            'data_processing' => $validated['data_processing'] ? 1 : 0,
+            'guardian_name' => $validated['guardian_name'] ?? null,
+            'guardian_rut' => $validated['guardian_rut'] ?? null,
+            'assigned_specialist' => $validated['assigned_specialist'],
+            'evaluation_date' => $validated['evaluation_date'],
+            'initial_observations' => $validated['initial_observations'] ?? null,
+            'created_by' => Auth::id(),
+        ]);
+
+        DB::commit();
+
+        return redirect()->route('students.index')->with('success', 'Estudiante creado exitosamente');
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        Log::error('Error al crear estudiante', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all()
+        ]);
+
+        return back()->withErrors([
+            'error' => 'Error al crear estudiante: ' . $e->getMessage()
+        ]);
     }
+}
 }

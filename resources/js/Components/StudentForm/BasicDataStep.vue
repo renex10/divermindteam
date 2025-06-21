@@ -2,44 +2,55 @@
 <template>
   <div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Campos para nuevo usuario con nombres corregidos -->
       <FormKit
         type="text"
-        v-model="formData.full_name"
-        name="full_name"
-        label="Nombres*"
+        v-model="formData.new_user.name"
+        name="new_user[name]"
+        label="Nombres *"
         placeholder="Ingrese nombres"
         validation="required"
         outer-class="mb-0"
         label-class="formkit-label"
         input-class="formkit-input"
-        help-class="formkit-help"
       />
 
       <FormKit
         type="text"
-        v-model="formData.last_name"
-        name="last_name"
+        v-model="formData.new_user.last_name"
+        name="new_user[last_name]"
         label="Apellidos *"
         placeholder="Apellidos"
         validation="required"
         outer-class="mb-0"
         label-class="formkit-label"
         input-class="formkit-input"
-        help-class="formkit-help"
       />
 
       <FormKit
-        type="text"
-        v-model="formData.rut"
-        name="rut"
-        label="RUT *"
-        placeholder="12.345.678-5"
-        validation="required"
+        type="email"
+        v-model="formData.new_user.email"
+        name="new_user[email]"
+        label="Email *"
+        placeholder="correo@ejemplo.com"
+        validation="required|email"
         outer-class="mb-0"
         label-class="formkit-label"
         input-class="formkit-input"
       />
 
+      <FormKit
+        type="password"
+        v-model="formData.new_user.password"
+        name="new_user[password]"
+        label="Contraseña *"
+        validation="required|length:8"
+        outer-class="mb-0"
+        label-class="formkit-label"
+        input-class="formkit-input"
+      />
+
+      <!-- Campos comunes -->
       <FormKit
         type="date"
         v-model="formData.birth_date"
@@ -87,87 +98,62 @@
         input-class="formkit-input"
       />
     </div>
-
-    <!-- Próximos pasos (solo visible en este paso) -->
-    <div v-if="showNextSteps" class="p-4 bg-indigo-50 rounded-lg border border-indigo-100 mt-6">
-      <h4 class="flex items-center text-lg font-medium text-indigo-800 mb-3">
-        <InformationCircleIcon class="h-5 w-5 mr-2" />
-        Próximos pasos
-      </h4>
-      <ul class="text-indigo-700 text-sm space-y-2">
-        <li class="flex items-start">
-          <CheckCircleIcon class="h-4 w-4 mt-0.5 mr-2 text-indigo-500 flex-shrink-0" />
-          <span>Subir documentos de respaldo (diagnóstico médico, informes)</span>
-        </li>
-        <li class="flex items-start">
-          <CheckCircleIcon class="h-4 w-4 mt-0.5 mr-2 text-indigo-500 flex-shrink-0" />
-          <span>Clasificar tipo de NEE (Permanente/Transitoria)</span>
-        </li>
-        <li class="flex items-start">
-          <CheckCircleIcon class="h-4 w-4 mt-0.5 mr-2 text-indigo-500 flex-shrink-0" />
-          <span>Obtener consentimiento de apoderados</span>
-        </li>
-        <li class="flex items-start">
-          <CheckCircleIcon class="h-4 w-4 mt-0.5 mr-2 text-indigo-500 flex-shrink-0" />
-          <span>Asignar profesional PIE y crear PAI inicial</span>
-        </li>
-      </ul>
-    </div>
   </div>
 </template>
 
 <script setup>
-import { InformationCircleIcon, CheckCircleIcon } from '@heroicons/vue/24/outline';
-import { computed, onMounted } from 'vue';
+import { computed, watch } from 'vue';
+
+const emit = defineEmits(['update:formData']);
 
 const props = defineProps({
-  formData: Object,
-  externalData: Object,
-  showNextSteps: Boolean
-});
-
-// Verificar la llegada de props
-console.log("BasicDataStep - Props recibidas:", {
-  formData: props.formData,
-  externalData: props.externalData,
-  showNextSteps: props.showNextSteps
-});
-
-// Verificar específicamente los cursos
-console.log("Cursos recibidos en externalData:", 
-  props.externalData?.courses ? props.externalData.courses : "UNDEFINED");
-
-// Transformar cursos
-const courseOptions = computed(() => {
-  console.log("Transformando cursos...");
-  
-  if (!props.externalData?.courses) {
-    console.warn("No se encontró 'courses' en externalData");
-    return [];
+  formData: {
+    type: Object,
+    required: true
+  },
+  externalData: {
+    type: Object,
+    default: () => ({})
   }
+});
+
+// Inicializar estructura para nuevo usuario
+if (!props.formData.new_user) {
+  emit('update:formData', {
+    ...props.formData,
+    new_user: {
+      name: '',
+      last_name: '',
+      email: '',
+      password: ''
+    }
+  });
+}
+
+// Observar cambios en formData
+watch(() => props.formData, (newValue) => {
+  emit('update:formData', newValue);
+}, { deep: true });
+
+const courseOptions = computed(() => {
+  if (!props.externalData?.courses) return [];
   
   if (!Array.isArray(props.externalData.courses)) {
-    console.error("'courses' no es un array:", typeof props.externalData.courses);
+    console.warn('courses no es un array:', props.externalData.courses);
     return [];
   }
   
-  const options = props.externalData.courses.map(course => {
-    if (!course.id || !course.name) {
-      console.warn("Curso con formato inválido:", course);
-      return null;
-    }
-    return {
-      value: course.id,
-      label: course.name
-    };
-  }).filter(Boolean);
-  
-  console.log("Opciones transformadas:", options);
-  return options;
+  return props.externalData.courses
+    .map(course => {
+      if (!course.id || !course.name) return null;
+      return { value: course.id, label: course.name };
+    })
+    .filter(Boolean);
 });
 
-// Verificar cuando el componente se monta
-onMounted(() => {
-  console.log("BasicDataStep montado");
+console.log("BasicDataStep - Datos recibidos:", {
+  formData: props.formData,
+  externalData: props.externalData,
+  courseOptions: courseOptions.value
 });
 </script>
