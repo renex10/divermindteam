@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Student;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreStudentRequest extends FormRequest
 {
@@ -11,7 +12,7 @@ class StoreStudentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -19,47 +20,54 @@ class StoreStudentRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-    public function rules(): array
+     public function rules()
     {
-        /*   etapa 1 */
         return [
-            // Etapa 1: Datos Básicos este tiene que ver con el archivo app\Http\Requests\Student\StoreStudentRequest.php
-            'full_name' => ['required', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
-            'rut' => ['required', 'string', 'max:20', 'unique:students,rut'],
-            'birth_date' => ['required', 'date'],
-            'course_id' => ['required', 'exists:courses,id'],
-            'diagnosis' => ['nullable', 'string', 'max:255'],
-            'guardian_email' => ['nullable', 'email', 'max:255'],
+            // Nuevo usuario
+            'new_user.name' => 'required|string|max:255',
+            'new_user.last_name' => 'required|string|max:255',
+            'new_user.email' => 'required|email|unique:users,email',
+            'new_user.password' => 'required|string|min:8',
 
-            // Etapa 2: Documentos esto se mantien igual
-            'medical_report' => ['required', 'file', 'mimes:pdf,doc,docx,jpg,png', 'max:5120'],
-            'previous_reports.*' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:5120'],
+            // Datos del estudiante
+            'birth_date' => 'required|date',
+            'course_id' => 'required|exists:courses,id',
+            'diagnosis' => 'nullable|string',
+            'guardian_email' => 'nullable|email',
 
-            // Etapa 3: Clasificación
-            'need_type' => ['required', 'in:permanent,temporary'],
-            'priority' => ['required', 'in:low,medium,high'], // ajusta los valores según tu backend
-            'special_needs' => ['nullable', 'string', 'max:1000'],
+            // Documentos
+            'medical_report' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:5120',
+            'previous_reports.*' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
 
+            // Clasificación
+            'need_type' => ['required', Rule::in(['permanent', 'temporary'])],
+            'priority' => 'required|integer|min:1|max:3',
+            'special_needs' => 'nullable|string',
 
-            // Etapa 4: Consentimientos
-            'consent_pie' => ['nullable', 'boolean'],
-            'data_processing' => ['nullable', 'boolean'],
-            'guardian_name' => ['required_if:consent_pie,true', 'string', 'max:255'],
-            'guardian_rut' => ['required_if:consent_pie,true', 'string', 'max:20'],
+            // Consentimientos
+            'consent_pie' => 'required|boolean',
+            'data_processing' => 'required|boolean',
+            'guardian_name' => 'required_if:consent_pie,true|string|max:255',
+            'guardian_rut' => 'required_if:consent_pie,true|string|max:20',
 
-
-            // Etapa 5: Asignación
-            'assigned_specialist' => ['required', 'exists:professionals,id'],
-            'evaluation_date' => ['required', 'date'],
-            'initial_observations' => ['nullable', 'string', 'max:1000'],
-
-
-
-
+            // Asignación
+            'assigned_specialist' => 'required|exists:professionals,id',
+            'evaluation_date' => 'required|date',
+            'initial_observations' => 'nullable|string',
         ];
     }
 
+
+
+    public function prepareForValidation()
+    {
+        // Decodifica automáticamente new_user si es string JSON
+        if ($this->has('new_user') && is_string($this->new_user)) {
+            $this->merge([
+                'new_user' => json_decode($this->new_user, true)
+            ]);
+        }
+    }
 
     public function messages(): array
     {

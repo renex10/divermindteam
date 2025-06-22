@@ -16,6 +16,8 @@ use App\Models\Professional;
 use App\Models\UserDocument;
 use App\Models\User; // Importar modelo User
 
+use App\Http\Requests\Student\StoreStudentRequest;
+
 class StudentController extends Controller
 {
     /**
@@ -225,53 +227,14 @@ class StudentController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
-public function store(Request $request)
+public function store(StoreStudentRequest $request) // Usa el Request personalizado
 {
     DB::beginTransaction();
 
     try {
-        // Decodificar new_user si viene como JSON (opcional)
-        if ($request->has('new_user') && is_string($request->input('new_user'))) {
-            $newUserData = json_decode($request->input('new_user'), true);
-            $request->merge(['new_user' => $newUserData]);
-        }
+        $validated = $request->validated(); // Validación automática
 
-        // Validación de campos
-        $validated = $request->validate([
-            // Nuevo usuario
-            'new_user.name' => 'required|string|max:255',
-            'new_user.last_name' => 'required|string|max:255',
-            'new_user.email' => 'required|email|unique:users,email',
-            'new_user.password' => 'required|string|min:8',
-
-            // Datos comunes del estudiante
-            'birth_date' => 'required|date',
-            'course_id' => 'required|exists:courses,id',
-            'diagnosis' => 'nullable|string',
-            'guardian_email' => 'nullable|email',
-
-            // Documentos
-            'medical_report' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:5120',
-            'previous_reports.*' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
-
-            // Clasificación
-            'need_type' => 'required|in:permanent,temporary',
-            'priority' => 'required|integer|min:1|max:3',
-            'special_needs' => 'nullable|string',
-
-            // Consentimientos
-            'consent_pie' => 'required|boolean',
-            'data_processing' => 'required|boolean',
-            'guardian_name' => 'required_if:consent_pie,1|string|max:255',
-            'guardian_rut' => 'required_if:consent_pie,1|string|max:20',
-
-            // Asignación
-            'assigned_specialist' => 'required|exists:professionals,id',
-            'evaluation_date' => 'required|date',
-            'initial_observations' => 'nullable|string',
-        ]);
-
-        // Crear nuevo usuario
+        // Crear usuario (los datos ya están validados)
         $user = User::create([
             'name' => $validated['new_user']['name'],
             'last_name' => $validated['new_user']['last_name'],
@@ -280,19 +243,12 @@ public function store(Request $request)
             'establishment_id' => Auth::user()->establishment_id,
         ]);
 
-        // Log: usuario creado
-        Log::info('Usuario creado exitosamente', [
-            'user_id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email
-        ]);
-
-        $rut = 'SIN-RUT-' . $user->id;
+        Log::info('Usuario creado', ['user_id' => $user->id]);
 
         // Guardar archivos
         $medicalReportPath = $request->file('medical_report')->store('medical_reports');
         $previousReportsPaths = [];
-
+        
         if ($request->hasFile('previous_reports')) {
             foreach ($request->file('previous_reports') as $file) {
                 $previousReportsPaths[] = $file->store('previous_reports');
@@ -302,7 +258,7 @@ public function store(Request $request)
         // Crear estudiante
         $student = Student::create([
             'user_id' => $user->id,
-            'rut' => $rut,
+            'rut' => 'SIN-RUT-' . $user->id,
             'birth_date' => $validated['birth_date'],
             'course_id' => $validated['course_id'],
             'diagnosis' => $validated['diagnosis'] ?? null,
@@ -312,8 +268,8 @@ public function store(Request $request)
             'need_type' => $validated['need_type'],
             'priority' => $validated['priority'],
             'special_needs' => $validated['special_needs'] ?? null,
-            'consent_pie' => $validated['consent_pie'] ? 1 : 0,
-            'data_processing' => $validated['data_processing'] ? 1 : 0,
+            'consent_pie' => $validated['consent_pie'],
+            'data_processing' => $validated['data_processing'],
             'guardian_name' => $validated['guardian_name'] ?? null,
             'guardian_rut' => $validated['guardian_rut'] ?? null,
             'assigned_specialist' => $validated['assigned_specialist'],
@@ -327,16 +283,12 @@ public function store(Request $request)
         return redirect()->route('students.index')->with('success', 'Estudiante creado exitosamente');
     } catch (\Exception $e) {
         DB::rollBack();
-
-        Log::error('Error al crear estudiante', [
+        Log::error('Error creando estudiante', [
             'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-            'request' => $request->all()
+            'trace' => $e->getTraceAsString()
         ]);
 
-        return back()->withErrors([
-            'error' => 'Error al crear estudiante: ' . $e->getMessage()
-        ]);
+        return back()->withErrors('Error: ' . $e->getMessage());
     }
 }
 }
