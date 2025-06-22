@@ -27,83 +27,81 @@ class StudentController extends Controller
      * @return \Inertia\Response
      */
     public function index(Request $request)
-    {
-        // Obtener parámetros de paginación desde la request
-        $perPage = $request->input('perPage', 10);
-        $page = $request->input('page', 1);
+{
+    // Obtener parámetros de paginación desde la request
+    $perPage = $request->input('perPage', 10);
+    $page = $request->input('page', 1);
 
-        // Consulta optimizada con relaciones y ordenamiento
-        $studentsQuery = Student::with(['user' => function ($query) {
-                $query->orderBy('last_name', 'asc')
-                    ->orderBy('name', 'asc');
-            }])
-            ->orderBy('priority', 'asc')
-            ->orderBy('created_at', 'desc');
+    // Consulta optimizada con relaciones y nuevo ordenamiento
+    $studentsQuery = Student::with(['user' => function ($query) {
+            $query->select('id', 'name', 'last_name', 'email'); // Solo campos necesarios
+        }])
+        ->orderBy('created_at', 'desc')  // Primero: últimos creados primero
+        ->orderBy('priority', 'asc');    // Segundo: prioridad más alta
 
-        // Obtener datos paginados
-        $students = $studentsQuery->paginate($perPage, ['*'], 'page', $page);
-        $students->appends($request->query());
+    // Obtener datos paginados
+    $students = $studentsQuery->paginate($perPage, ['*'], 'page', $page);
+    $students->appends($request->query());
 
-        // Transformar datos usando StudentResource manteniendo la paginación
-        $transformedStudents = [
-            'data' => StudentResource::collection($students->items()),
-            'current_page' => $students->currentPage(),
-            'last_page' => $students->lastPage(),
-            'per_page' => $students->perPage(),
-            'total' => $students->total(),
-            'from' => $students->firstItem(),
-            'to' => $students->lastItem(),
-            'path' => $students->path(),
-            'links' => $students->linkCollection()
-        ];
+    // Transformar datos usando StudentResource
+    $transformedStudents = [
+        'data' => StudentResource::collection($students->items()),
+        'current_page' => $students->currentPage(),
+        'last_page' => $students->lastPage(),
+        'per_page' => $students->perPage(),
+        'total' => $students->total(),
+        'from' => $students->firstItem(),
+        'to' => $students->lastItem(),
+        'path' => $students->path(),
+        'links' => $students->linkCollection()->toArray()
+    ];
 
-        // Obtener cursos para el formulario
-        $courses = Course::orderBy('name')->get();
-        
-        // Obtener especialistas activos con sus datos de usuario
-        $specialists = Professional::with(['user:id,name,last_name', 'specialty:id,name'])
-            ->where('active', true)
-            ->get()
-            ->map(function ($professional) {
-                return [
-                    'id' => $professional->id,
-                    'name' => $professional->user->name,
-                    'last_name' => $professional->user->last_name,
-                    'specialty' => $professional->specialty->name,
-                    'full_name' => $professional->user->name . ' ' . $professional->user->last_name
-                ];
-            });
+    // Obtener cursos (optimizado)
+    $courses = Course::orderBy('name')->get(['id', 'name']);
 
-        // Obtener usuarios con su RUT para el selector
-        $users = User::with('document')
-            ->get()
-            ->map(function ($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'last_name' => $user->last_name,
-                    'rut' => $user->document->rut ?? 'Sin RUT'
-                ];
-            });
+    // Obtener especialistas activos (optimizado)
+    $specialists = Professional::with(['user:id,name,last_name', 'specialty:id,name'])
+        ->where('active', true)
+        ->get()
+        ->map(function ($professional) {
+            return [
+                'id' => $professional->id,
+                'name' => $professional->user->name,
+                'last_name' => $professional->user->last_name,
+                'specialty' => $professional->specialty->name,
+                'full_name' => $professional->user->name . ' ' . $professional->user->last_name
+            ];
+        });
 
-        // Debug: Verificar datos obtenidos
-        Log::debug('Datos para vista Student:', [
-            'students_count' => $students->total(),
-            'courses_count' => $courses->count(),
-            'specialists_count' => $specialists->count(),
-            'users_count' => $users->count(),
-            'first_user' => $users->first()
-        ]);
+    // Obtener usuarios con RUT (optimizado)
+    $users = User::with('document:id,user_id,rut')
+        ->get(['id', 'name', 'last_name'])
+        ->map(function ($user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'last_name' => $user->last_name,
+                'rut' => $user->document->rut ?? 'Sin RUT'
+            ];
+        });
 
-        // Retornar vista con todos los datos necesarios
-        return Inertia::render('Student', [
-            'students' => $transformedStudents,
-            'courses' => $courses,
-            'specialists' => $specialists,
-            'users' => $users // 👈 Enviar usuarios formateados
-        ]);
-    }
+    // Debug: Verificar datos obtenidos
+    Log::debug('Datos para vista Student:', [
+        'students_count' => $students->total(),
+        'last_student' => $students->first() ? $students->first()->created_at : null,
+        'courses_count' => $courses->count(),
+        'specialists_count' => $specialists->count(),
+        'users_count' => $users->count()
+    ]);
 
+    // Retornar vista con todos los datos necesarios
+    return Inertia::render('Student', [
+        'students' => $transformedStudents,
+        'courses' => $courses,
+        'specialists' => $specialists,
+        'users' => $users
+    ]);
+}
     /**
      * Muestra el formulario de creación de estudiantes
      * 
