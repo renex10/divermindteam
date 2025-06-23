@@ -362,4 +362,28 @@ public function stats()
                                ->where('priority', 1)->count(),
     ]);
 }
+
+
+public function destroy(Student $student)
+{
+    try {
+        DB::transaction(function () use ($student) {
+            // Eliminar documentos asociados
+            $student->user->document()->delete();
+            
+            // Eliminar relaciones
+            $student->courses()->detach();
+            
+            // Eliminar usuario asociado
+            $student->user()->delete();
+            
+            // Finalmente eliminar el estudiante
+            $student->delete();
+        });
+        
+        return response()->json(['success' => true]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
 }
