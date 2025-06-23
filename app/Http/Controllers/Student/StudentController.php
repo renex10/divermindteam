@@ -231,6 +231,12 @@ class StudentController extends Controller
      */
 public function store(StoreStudentRequest $request)
 {
+     // DEBUG: Verificar estructura de datos
+    Log::debug('Datos recibidos en store()', [
+        'all_data' => $request->all(),
+        'new_user' => $request->input('new_user'),
+        'last_name' => $request->input('new_user.last_name')
+    ]);
     DB::beginTransaction();
 
     try {

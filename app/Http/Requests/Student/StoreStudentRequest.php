@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Requests\Student;
+use Illuminate\Support\Facades\Log;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -23,6 +24,8 @@ class StoreStudentRequest extends FormRequest
      */
     public function rules(): array
     {
+         Log::debug('Validating:', $this->all());
+
         $establishmentId = Auth::user()->establishment_id;
 
         return [
@@ -93,19 +96,21 @@ class StoreStudentRequest extends FormRequest
         ];
     }
 
-    public function prepareForValidation()
-    {
-        // Decodificar automáticamente new_user si es string JSON
-        if ($this->has('new_user') && is_string($this->new_user)) {
-            $this->merge([
-                'new_user' => json_decode($this->new_user, true)
-            ]);
-        }
-
-        // Asegurar valores booleanos para los consentimientos
-        $this->merge([
-            'consent_pie' => filter_var($this->consent_pie, FILTER_VALIDATE_BOOLEAN),
-            'data_processing' => filter_var($this->data_processing, FILTER_VALIDATE_BOOLEAN),
-        ]);
+public function prepareForValidation()
+{
+    // Siempre procesar new_user como JSON
+    if ($this->has('new_user')) {
+        $newUserData = is_string($this->new_user) 
+            ? json_decode($this->new_user, true) 
+            : $this->new_user;
+        
+        $this->merge(['new_user' => $newUserData]);
     }
+
+    // Convertir booleanos
+    $this->merge([
+        'consent_pie' => filter_var($this->consent_pie, FILTER_VALIDATE_BOOLEAN),
+        'data_processing' => filter_var($this->data_processing, FILTER_VALIDATE_BOOLEAN),
+    ]);
+}
 }

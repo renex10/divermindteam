@@ -5,7 +5,8 @@
       <!-- Campos para nuevo usuario -->
       <FormKit
         type="text"
-        v-model="formData.new_user.name"
+        :value="formData.new_user.name"
+        @input="updateNewUser('name', $event)"
         name="new_user[name]"
         label="Nombres *"
         placeholder="Ingrese nombres"
@@ -17,7 +18,8 @@
 
       <FormKit
         type="text"
-        v-model="formData.new_user.last_name"
+        :value="formData.new_user.last_name"
+        @input="updateNewUser('last_name', $event)"
         name="new_user[last_name]"
         label="Apellidos *"
         placeholder="Apellidos"
@@ -42,7 +44,8 @@
 
       <FormKit
         type="email"
-        v-model="formData.new_user.email"
+        :value="formData.new_user.email"
+        @input="updateNewUser('email', $event)"
         name="new_user[email]"
         label="Email *"
         placeholder="correo@ejemplo.com"
@@ -54,7 +57,8 @@
 
       <FormKit
         type="password"
-        v-model="formData.new_user.password"
+        :value="formData.new_user.password"
+        @input="updateNewUser('password', $event)"
         name="new_user[password]"
         label="Contraseña *"
         validation="required|length:8"
@@ -129,6 +133,17 @@ const props = defineProps({
     default: () => ({})
   }
 });
+
+// Función para actualizar campos anidados
+const updateNewUser = (field, value) => {
+  emit('update:formData', {
+    ...props.formData,
+    new_user: {
+      ...props.formData.new_user,
+      [field]: value
+    }
+  });
+};
 
 // Inicializar estructura para nuevo usuario
 if (!props.formData.new_user) {
