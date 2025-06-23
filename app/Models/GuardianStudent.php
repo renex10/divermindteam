@@ -5,48 +5,42 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 
 
 
 class GuardianStudent extends Model
 {
-    /** @use HasFactory<\Database\Factories\GuardianStudentFactory> */
-    use HasFactory;
-
-    protected $fillable = [
-    'student_id',
-    'guardian_id',
-    'is_primary',
-    'relationship'
-];
+     protected $fillable = [
+        'student_id',
+        'guardian_id',
+        'establishment_id',
+        'is_primary',
+        'relationship',
+    ];
 
 
-    public function run(): void
+
+    
+ public function student(): BelongsTo
     {
-        $students = Student::all();
-        $users = User::whereDoesntHave('guardedStudents')->get();
-
-        $relationships = ['padre', 'madre', 'tutor', 'abuelo', 'tío'];
-
-        foreach ($students as $student) {
-            // Asignar 1-3 apoderados por estudiante
-            $guardiansCount = rand(1, 3);
-            $guardians = $users->random($guardiansCount);
-
-            foreach ($guardians as $index => $guardian) {
-                $student->guardians()->attach($guardian->id, [
-                    'is_primary' => $index === 0, // El primero es principal
-                    'relationship' => $relationships[array_rand($relationships)],
-                ]);
-            }
-        }
+        return $this->belongsTo(Student::class);
     }
 
-//modelo relación estudiante-apoderado
-     public function consent(): HasOne
+    public function guardian(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'guardian_id');
+    }
+
+    public function establishment(): BelongsTo
+    {
+        return $this->belongsTo(Establishment::class);
+    }
+
+    public function consent(): HasOne
     {
         return $this->hasOne(Consent::class);
     }
-
 
 }

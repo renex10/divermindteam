@@ -107,59 +107,59 @@ const handleDelete = (student) => {};
 
 const showModal = ref(false);
 const initialFormData = ref({});
+const isLoading = ref(false); // Nuevo estado para controlar carga
 
 const openModal = () => showModal.value = true;
 const closeModal = () => showModal.value = false;
 
 const handleFormSubmit = async (formData) => {
+  isLoading.value = true;
+  
   try {
     const form = new FormData();
     
-    // Construir objeto new_user
+    // Datos del usuario estudiante
     const newUserData = {
       name: formData.new_user.name,
       last_name: formData.new_user.last_name,
       email: formData.new_user.email,
       password: formData.new_user.password
     };
-    
-    // Agregar new_user como JSON
     form.append('new_user', JSON.stringify(newUserData));
     
-    // Agregar otros campos
+    // Datos principales del estudiante
     form.append('birth_date', formData.birth_date);
     form.append('course_id', formData.course_id);
     form.append('diagnosis', formData.diagnosis || '');
-    form.append('guardian_email', formData.guardian_email || '');
     form.append('need_type', formData.need_type);
     form.append('priority', formData.priority);
     form.append('special_needs', formData.special_needs || '');
-    form.append('consent_pie', formData.consent_pie ? '1' : '0');
-    form.append('data_processing', formData.data_processing ? '1' : '0');
-    form.append('guardian_name', formData.guardian_name || '');
-    form.append('guardian_rut', formData.guardian_rut || '');
-    form.append('assigned_specialist', formData.assigned_specialist);
+    form.append('assigned_specialist_id', formData.assigned_specialist);
     form.append('evaluation_date', formData.evaluation_date);
     form.append('initial_observations', formData.initial_observations || '');
+    
+    // Datos de consentimiento
+    form.append('consent_pie', formData.consent_pie ? '1' : '0');
+    form.append('data_processing', formData.data_processing ? '1' : '0');
+    
+    // Solo agregar datos de apoderado si hay consentimiento PIE
+    if (formData.consent_pie) {
+      form.append('guardian_email', formData.guardian_email || '');
+      form.append('guardian_name', formData.guardian_name || '');
+      form.append('guardian_rut', formData.guardian_rut || '');
+      form.append('relationship', formData.relationship || '');
+    }
     
     // Archivos
     if (formData.medical_report) {
       form.append('medical_report', formData.medical_report);
     }
     
-    if (formData.previous_reports && formData.previous_reports.length) {
+    if (formData.previous_reports?.length) {
       formData.previous_reports.forEach((file, index) => {
         form.append(`previous_reports[${index}]`, file);
       });
     }
-
-    // DEBUG: Mostrar datos que se enviarán
-    console.log('Datos a enviar:', {
-      new_user: newUserData,
-      birth_date: formData.birth_date,
-      course_id: formData.course_id,
-      // ... otros campos ...
-    });
 
     const response = await axios.post(route('students.store'), form, {
       headers: {
@@ -167,30 +167,31 @@ const handleFormSubmit = async (formData) => {
       }
     });
     
-    console.log('Respuesta exitosa:', response.data);
     closeModal();
     router.reload();
     
   } catch (error) {
-    console.error('Error en la petición:', error);
-    if (error.response) {
-      console.error('Datos del error:', error.response.data);
-      const errorMessages = Object.values(error.response.data.errors || {})
-        .flat()
-        .join('\n');
-      alert(`Error:\n${errorMessages || error.response.data.message || error.response.statusText}`);
+    if (error.response?.status === 422) {
+      // Mostrar errores de validación de forma amigable
+      const errors = error.response.data.errors;
+      let errorMessages = [];
+      
+      for (const field in errors) {
+        errorMessages.push(...errors[field]);
+      }
+      
+      alert(`Errores de validación:\n- ${errorMessages.join('\n- ')}`);
     } else {
-      alert('Error de red: ' + error.message);
+      alert('Error al guardar el estudiante. Por favor intente nuevamente.');
     }
+  } finally {
+    isLoading.value = false;
   }
 };
-
 console.log("Student.vue - Props recibidas:", {
   students: props.students,
   courses: props.courses,
   specialists: props.specialists,
   users: props.users
 });
-
-console.log("formExternalData creado:", formExternalData);
 </script>

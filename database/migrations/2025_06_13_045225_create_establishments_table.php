@@ -11,15 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('establishments', function (Blueprint $table) {
-            $table->id();
-            $table->string('name', 100)->comment('Official name of the educational establishment');
-            $table->string('address', 200)->comment('Full physical address');
-            $table->foreignId('commune_id')->constrained()->onDelete('restrict')->onUpdate('cascade')->comment('Commune where the establishment is located');
-            $table->integer('pie_quota_max')->default(0)->comment('Maximum number of students who can join the PIE program');
-            $table->timestamps();
-
-        });
+// Establecimientos
+Schema::create('establishments', function (Blueprint $table) {
+    $table->id();
+    $table->string('name', 100)->comment('Official name of the educational establishment');
+    $table->string('address', 200)->comment('Full physical address');
+    $table->foreignId('commune_id')->constrained()->onDelete('restrict')->onUpdate('cascade')->comment('Commune where the establishment is located');
+    $table->integer('pie_quota_max')->default(0)->comment('Maximum number of students who can join the PIE program');
+    $table->timestamps();
+});
     }
 
     /**

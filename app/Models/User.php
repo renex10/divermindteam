@@ -10,6 +10,10 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
 class User extends Authenticatable
 {
     use HasApiTokens;
@@ -63,23 +67,43 @@ class User extends Authenticatable
         ];
     }
 
-    public function document()
-{
-    return $this->hasOne(UserDocument::class);
-}
-
-public function schedule()
-{
-    return $this->hasOne(UserSchedule::class);
-}
-
-public function getWeeklyHoursAttribute()
-{
-    return $this->schedule?->weekly_hours ?? 0;
-}
-
-public function establishment()
+public function establishment(): BelongsTo
     {
         return $this->belongsTo(Establishment::class);
+    }
+
+    public function document(): HasOne
+    {
+        return $this->hasOne(UserDocument::class);
+    }
+
+    public function phones(): HasMany
+    {
+        return $this->hasMany(UserPhone::class);
+    }
+
+    public function schedule(): HasOne
+    {
+        return $this->hasOne(UserSchedule::class);
+    }
+
+    public function professionalProfile(): HasOne
+    {
+        return $this->hasOne(Professional::class);
+    }
+
+    public function taughtCourses(): HasMany
+    {
+        return $this->hasMany(Course::class, 'teacher_id');
+    }
+
+    public function studentProfile(): HasOne
+    {
+        return $this->hasOne(Student::class);
+    }
+
+    public function guardianRelationships(): HasMany
+    {
+        return $this->hasMany(GuardianStudent::class, 'guardian_id');
     }
 }

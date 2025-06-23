@@ -8,32 +8,34 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('students', function (Blueprint $table) {
-            $table->engine = 'InnoDB';
-            $table->id(); // Asegurar BIGINT UNSIGNED con AUTO_INCREMENT
+ // Estudiantes (CAMBIOS CLAVE)
+Schema::create('students', function (Blueprint $table) {
+    $table->engine = 'InnoDB';
+    $table->id();
 
-            // Relación con usuarios (no almacena datos personales duplicados)
-            $table->foreignId('user_id')->nullable()->constrained()->onDelete('set null')->onUpdate('cascade');
+    // Relación con usuarios
+    $table->foreignId('user_id')
+        ->constrained() // Eliminado nullable()
+        ->onDelete('cascade'); // Borrar estudiante si se borra usuario
 
-            // Relación con documentos de identificación
-            $table->foreignId('document_id')->nullable()->constrained('user_documents')->onDelete('set null')->onUpdate('cascade');
+    // Nuevo campo para establecimiento
+    $table->foreignId('establishment_id')
+        ->constrained('establishments')
+        ->onDelete('cascade'); // Borrar estudiante si se borra establecimiento
 
-            // Relación con cursos
-            $table->foreignId('course_id')->nullable()->constrained('courses')->onDelete('set null')->onUpdate('cascade');
+    // Datos exclusivos del estudiante
+    $table->date('birth_date');
+    $table->enum('need_type', ['permanent', 'temporary'])->default('temporary');
+    $table->text('diagnosis')->nullable();
+    $table->tinyInteger('priority')->default(3)->comment('1: Máxima, 2: Media, 3: Básica');
+    $table->boolean('active')->default(true);
+    $table->timestamps();
 
-            // Datos exclusivos del estudiante (sin redundancia)
-            $table->date('birth_date');
-            $table->enum('need_type', ['permanent', 'temporary'])->default('temporary');
-            $table->text('diagnosis')->nullable();
-            $table->tinyInteger('priority')->default(3)->comment('1: Máxima, 2: Media, 3: Básica');
-            $table->boolean('active')->default(true);
+    // Índices
+    $table->index('priority');
+    $table->index('active');
+});
 
-            $table->timestamps();
-
-            // Índices para mejorar la performance en consultas frecuentes
-            $table->index('priority');
-            $table->index('active');
-        });
     }
 
     public function down(): void

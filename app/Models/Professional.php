@@ -4,25 +4,32 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\ProfessionalWorkHour;
 
-class Professional extends Model
-{
+
     /** @use HasFactory<\Database\Factories\ProfessionalFactory> */
-    use HasFactory;
-    // app/Models/Professional.php
-public function user()
+ class Professional extends Model
 {
-    return $this->belongsTo(User::class);
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function specialty(): BelongsTo
+    {
+        return $this->belongsTo(Specialty::class);
+    }
+
+    public function establishment(): BelongsTo
+    {
+        return $this->belongsTo(Establishment::class);
+    }
+
+    public function workHours(): HasOne
+    {
+        return $this->hasOne(ProfessionalWorkHour::class);
+    }
 }
 
-public function specialty()
-{
-    return $this->belongsTo(Specialty::class);
-}
-
-// Scope para activos
-public function scopeActive($query)
-{
-    return $query->where('active', true);
-}
-}

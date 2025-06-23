@@ -4,32 +4,30 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Course extends Model
 {
-    /** @use HasFactory<\Database\Factories\CourseFactory> */
-    use HasFactory;
-    // app/Models/Course.php
-public function schedules()
-{
-    return $this->hasMany(CourseSchedule::class);
-}
+    public function establishment(): BelongsTo
+    {
+        return $this->belongsTo(Establishment::class);
+    }
 
-// app/Models/CourseSchedule.php
-public function course()
-{
-     return $this->belongsTo(Course::class, 'course_id');
-}
+    public function teacher(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'teacher_id');
+    }
 
-// Para integración con sesiones PIE
-/* public function pieSessions()
-{
-    return $this->hasMany(PieSession::class, 'schedule_id');
-} */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(CourseSchedule::class);
+    }
 
-    public function establishment()
-{
-    return $this->belongsTo(Establishment::class);
-}
+    public function students(): BelongsToMany
+    {
+        return $this->belongsToMany(Student::class, 'course_students');
+    }
 
 }

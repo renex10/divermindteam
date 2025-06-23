@@ -9,17 +9,17 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-        Schema::create('user_documents', function (Blueprint $table) {
+// Documentos de usuario
+public function up(): void
+{
+    Schema::create('user_documents', function (Blueprint $table) {
         $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('rut', 12)->unique()->comment('Chilean RUT format 12345678-9');
-            $table->boolean('verified')->default(false)->comment('Verification status of the document');
-            $table->timestamps();
-
-        });
-    }
+        $table->foreignId('user_id')->constrained()->onDelete('cascade');
+        $table->string('rut', 12)->unique()->comment('Chilean RUT format 12345678-9');
+        $table->boolean('verified')->default(false)->comment('Verification status of the document');
+        $table->timestamps();
+    });
+}
 
     /**
      * Reverse the migrations.

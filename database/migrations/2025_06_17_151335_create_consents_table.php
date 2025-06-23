@@ -11,21 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('consents', function (Blueprint $table) {
-            $table->id();
-
-            // Relación explícita a la relación estudiante-apoderado
-            $table->foreignId('guardian_student_id')
-                ->constrained('guardian_students')
-                ->onDelete('cascade');
-
-            $table->boolean('consent_pie')->default(false);
-            $table->boolean('data_processing')->default(false);
-
-            $table->date('signed_at')->default(now());
-
-            $table->timestamps();
-        });
+// Consentimientos
+Schema::create('consents', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('guardian_student_id')->constrained('guardian_students')->onDelete('cascade');
+    $table->foreignId('establishment_id') // Nuevo campo
+        ->constrained('establishments')
+        ->onDelete('cascade');
+    $table->boolean('consent_pie')->default(false);
+    $table->boolean('data_processing')->default(false);
+    $table->date('signed_at')->default(now());
+    $table->timestamps();
+});
     }
 
     /**

@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Professional;
 use App\Models\UserDocument;
 use App\Models\User; // Importar modelo User
+use App\Models\GuardianStudent;
+use App\Models\Consent;
+use App\Models\Document;
+use Illuminate\Support\Str;
 
 use App\Http\Requests\Student\StoreStudentRequest;
 
@@ -225,68 +229,123 @@ class StudentController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
-public function store(StoreStudentRequest $request) // Usa el Request personalizado
+public function store(StoreStudentRequest $request)
 {
     DB::beginTransaction();
 
     try {
-        $validated = $request->validated(); // Validación automática
+        $validated = $request->validated();
+        $establishmentId = Auth::user()->establishment_id;
 
-        // Crear usuario (los datos ya están validados)
+        // 1. Crear usuario para el estudiante
         $user = User::create([
             'name' => $validated['new_user']['name'],
             'last_name' => $validated['new_user']['last_name'],
             'email' => $validated['new_user']['email'],
             'password' => Hash::make($validated['new_user']['password']),
-            'establishment_id' => Auth::user()->establishment_id,
+            'establishment_id' => $establishmentId,
         ]);
 
-        Log::info('Usuario creado', ['user_id' => $user->id]);
+        // 2. Crear documento RUT para el ESTUDIANTE (usando un placeholder único)
+        UserDocument::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'rut' => 'STUDENT-' . $user->id, // RUT único basado en ID
+                'verified' => false
+            ]
+        );
 
-        // Guardar archivos
-        $medicalReportPath = $request->file('medical_report')->store('medical_reports');
-        $previousReportsPaths = [];
-        
-        if ($request->hasFile('previous_reports')) {
-            foreach ($request->file('previous_reports') as $file) {
-                $previousReportsPaths[] = $file->store('previous_reports');
-            }
-        }
-
-        // Crear estudiante
+        // 3. Crear estudiante
         $student = Student::create([
             'user_id' => $user->id,
-            'rut' => 'SIN-RUT-' . $user->id,
+            'establishment_id' => $user->establishment_id,
             'birth_date' => $validated['birth_date'],
-            'course_id' => $validated['course_id'],
             'diagnosis' => $validated['diagnosis'] ?? null,
-            'guardian_email' => $validated['guardian_email'] ?? null,
-            'medical_report_path' => $medicalReportPath,
-            'previous_reports_paths' => json_encode($previousReportsPaths),
             'need_type' => $validated['need_type'],
             'priority' => $validated['priority'],
             'special_needs' => $validated['special_needs'] ?? null,
-            'consent_pie' => $validated['consent_pie'],
-            'data_processing' => $validated['data_processing'],
-            'guardian_name' => $validated['guardian_name'] ?? null,
-            'guardian_rut' => $validated['guardian_rut'] ?? null,
-            'assigned_specialist' => $validated['assigned_specialist'],
+            'assigned_specialist_id' => $validated['assigned_specialist_id'],
             'evaluation_date' => $validated['evaluation_date'],
             'initial_observations' => $validated['initial_observations'] ?? null,
-            'created_by' => Auth::id(),
         ]);
+
+        // 4. Asignar curso
+        $student->courses()->attach($validated['course_id']);
+
+        // 5. Manejar apoderados y consentimientos
+        if ($validated['consent_pie']) {
+            // Buscar o crear usuario para el apoderado
+            $guardianUser = User::firstOrCreate(
+                ['email' => $validated['guardian_email']],
+                [
+                    'name' => $validated['guardian_name'],
+                    'password' => Hash::make(Str::random(40)),
+                    'establishment_id' => $establishmentId,
+                ]
+            );
+
+            // Crear documento RUT para APODERADO (usando el RUT proporcionado)
+            UserDocument::updateOrCreate(
+                ['user_id' => $guardianUser->id],
+                ['rut' => $validated['guardian_rut'], 'verified' => false]
+            );
+
+            // Crear relación apoderado-estudiante
+            $guardianStudent = GuardianStudent::create([
+                'student_id' => $student->id,
+                'guardian_id' => $guardianUser->id,
+                'establishment_id' => $establishmentId,
+                'is_primary' => true,
+                'relationship' => $validated['relationship'],
+            ]);
+
+            // Crear consentimiento
+            Consent::create([
+                'guardian_student_id' => $guardianStudent->id,
+                'establishment_id' => $establishmentId,
+                'consent_pie' => true,
+                'data_processing' => $validated['data_processing'],
+                'signed_at' => now(),
+            ]);
+        }
+
+        // 6. Guardar documentos médicos
+        $this->storeDocuments($request, $student);
 
         DB::commit();
 
         return redirect()->route('students.index')->with('success', 'Estudiante creado exitosamente');
     } catch (\Exception $e) {
         DB::rollBack();
-        Log::error('Error creando estudiante', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
+        Log::error('Error creando estudiante', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+        return back()->withInput()->withErrors('Error: ' . $e->getMessage());
+    }
+}
+private function storeDocuments($request, $student)
+{
+    // Documento médico principal
+    $medicalReport = $request->file('medical_report');
+    Document::create([
+        'documentable_type' => Student::class,
+        'documentable_id' => $student->id,
+        'type' => 'medical_report',
+        'path' => $medicalReport->store("establishments/{$student->establishment_id}/medical_reports"),
+        'format' => $medicalReport->extension(),
+        'description' => 'Informe médico inicial',
+    ]);
 
-        return back()->withErrors('Error: ' . $e->getMessage());
+    // Reportes anteriores (opcionales)
+    if ($request->hasFile('previous_reports')) {
+        foreach ($request->file('previous_reports') as $file) {
+            Document::create([
+                'documentable_type' => Student::class,
+                'documentable_id' => $student->id,
+                'type' => 'previous_report',
+                'path' => $file->store("establishments/{$student->establishment_id}/previous_reports"),
+                'format' => $file->extension(),
+                'description' => 'Reporte médico anterior',
+            ]);
+        }
     }
 }
 }

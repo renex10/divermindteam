@@ -4,6 +4,7 @@ namespace App\Http\Requests\Student;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Auth;
 
 class StoreStudentRequest extends FormRequest
 {
@@ -12,7 +13,7 @@ class StoreStudentRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return true;
+        return true; // La autorización se manejará posteriormente con políticas
     }
 
     /**
@@ -20,10 +21,12 @@ class StoreStudentRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-     public function rules()
+    public function rules(): array
     {
+        $establishmentId = Auth::user()->establishment_id;
+
         return [
-            // Nuevo usuario
+            // Nuevo usuario (estudiante)
             'new_user.name' => 'required|string|max:255',
             'new_user.last_name' => 'required|string|max:255',
             'new_user.email' => 'required|email|unique:users,email',
@@ -31,88 +34,78 @@ class StoreStudentRequest extends FormRequest
 
             // Datos del estudiante
             'birth_date' => 'required|date',
-            'course_id' => 'required|exists:courses,id',
+            'course_id' => [
+                'required',
+                Rule::exists('courses', 'id')->where('establishment_id', $establishmentId)
+            ],
             'diagnosis' => 'nullable|string',
-            'guardian_email' => 'nullable|email',
-
-            // Documentos
-            'medical_report' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:5120',
-            'previous_reports.*' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
-
-            // Clasificación
             'need_type' => ['required', Rule::in(['permanent', 'temporary'])],
             'priority' => 'required|integer|min:1|max:3',
             'special_needs' => 'nullable|string',
 
-            // Consentimientos
-            'consent_pie' => 'required|boolean',
-            'data_processing' => 'required|boolean',
-            'guardian_name' => 'required_if:consent_pie,true|string|max:255',
-            'guardian_rut' => 'required_if:consent_pie,true|string|max:20',
-
-            // Asignación
-            'assigned_specialist' => 'required|exists:professionals,id',
+            // Asignación de especialista
+            'assigned_specialist_id' => [
+                'required',
+                Rule::exists('professionals', 'id')->where('establishment_id', $establishmentId)
+            ],
             'evaluation_date' => 'required|date',
             'initial_observations' => 'nullable|string',
+
+            // Documentos médicos
+            'medical_report' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:5120',
+            'previous_reports.*' => 'nullable|file|mimes:pdf,doc,docx|max:5120',
+
+            // Apoderado y consentimientos
+            'consent_pie' => 'required|boolean',
+            'data_processing' => 'required|boolean',
+            'guardian_email' => 'required_if:consent_pie,true|email',
+            'guardian_name' => 'required_if:consent_pie,true|string|max:255',
+            'guardian_rut' => [
+                'required_if:consent_pie,true',
+                'string',
+                'max:20',
+                // Agregar regla personalizada para formato RUT si es necesario
+            ],
+            'relationship' => 'required_if:consent_pie,true|string|max:50|in:parent,tutor,other',
         ];
-    }
-
-
-
-    public function prepareForValidation()
-    {
-        // Decodifica automáticamente new_user si es string JSON
-        if ($this->has('new_user') && is_string($this->new_user)) {
-            $this->merge([
-                'new_user' => json_decode($this->new_user, true)
-            ]);
-        }
     }
 
     public function messages(): array
     {
         return [
-            // Paso 1: Datos Básicos
-        'full_name.required' => 'El nombre es obligatorio.',
-        'last_name.required' => 'El apellido es obligatorio.',
-        'rut.required' => 'El RUT es obligatorio.',
-        'rut.unique' => 'Este RUT ya está registrado.',
-        'birth_date.required' => 'La fecha de nacimiento es obligatoria.',
-        'course_id.required' => 'El campo Curso es obligatorio.',
-        'course_id.exists' => 'El Curso seleccionado no existe.',
-        'guardian_email.email' => 'El correo del apoderado debe ser válido.',
-
-        // Paso 2: Documentos
-        'medical_report.required' => 'Debes adjuntar el Informe Médico.',
-        'medical_report.file' => 'El Informe Médico debe ser un archivo.',
-        'medical_report.mimes' => 'Formatos permitidos: PDF, Word, JPG, PNG.',
-        'medical_report.max' => 'El archivo no debe superar los 5MB.',
-
-        'previous_reports.*.file' => 'Cada Informe Previo debe ser un archivo.',
-        'previous_reports.*.mimes' => 'Formatos permitidos: PDF, Word.',
-        'previous_reports.*.max' => 'Cada archivo no debe superar los 5MB.',
-
-        // Paso 3: Clasificación
-        'need_type.required' => 'Debes seleccionar el tipo de necesidad.',
-        'need_type.in' => 'La opción seleccionada para el tipo de necesidad no es válida.',
-
-        'priority.required' => 'Debes seleccionar la prioridad.',
-        'priority.in' => 'La opción seleccionada para la prioridad no es válida.',
-
-        'special_needs.max' => 'Las necesidades específicas no deben exceder los 1000 caracteres.',
-
-        // Paso 4: Consentimientos
-        'guardian_name.required_if' => 'El nombre del apoderado es obligatorio si se autoriza la participación en PIE.',
-        'guardian_rut.required_if' => 'El RUT del apoderado es obligatorio si se autoriza la participación en PIE.',
-
-        // Paso 5: Asignación
-        'assigned_specialist.required' => 'Debes seleccionar un profesional asignado.',
-        'assigned_specialist.exists' => 'El profesional seleccionado no es válido.',
-        'evaluation_date.required' => 'La fecha de evaluación inicial es obligatoria.',
-        'evaluation_date.date' => 'La fecha de evaluación debe tener un formato válido.',
-        'initial_observations.max' => 'Las observaciones iniciales no deben superar los 1000 caracteres.',
-
-
+            'course_id.exists' => 'El curso seleccionado no pertenece a su establecimiento.',
+            'assigned_specialist_id.exists' => 'El especialista seleccionado no pertenece a su establecimiento.',
+            'guardian_email.required_if' => 'El email del apoderado es requerido cuando se otorga consentimiento PIE.',
+            'guardian_name.required_if' => 'El nombre del apoderado es requerido cuando se otorga consentimiento PIE.',
+            'guardian_rut.required_if' => 'El RUT del apoderado es requerido cuando se otorga consentimiento PIE.',
+            'relationship.required_if' => 'La relación con el estudiante es requerida cuando se otorga consentimiento PIE.',
+            'relationship.in' => 'La relación debe ser una de: padre, tutor, otro.',
         ];
+    }
+
+    public function attributes(): array
+    {
+        return [
+            'new_user.name' => 'nombre del estudiante',
+            'new_user.last_name' => 'apellido del estudiante',
+            'assigned_specialist_id' => 'especialista asignado',
+            'guardian_rut' => 'RUT del apoderado',
+        ];
+    }
+
+    public function prepareForValidation()
+    {
+        // Decodificar automáticamente new_user si es string JSON
+        if ($this->has('new_user') && is_string($this->new_user)) {
+            $this->merge([
+                'new_user' => json_decode($this->new_user, true)
+            ]);
+        }
+
+        // Asegurar valores booleanos para los consentimientos
+        $this->merge([
+            'consent_pie' => filter_var($this->consent_pie, FILTER_VALIDATE_BOOLEAN),
+            'data_processing' => filter_var($this->data_processing, FILTER_VALIDATE_BOOLEAN),
+        ]);
     }
 }

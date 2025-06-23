@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Document extends Model
 {
@@ -18,15 +19,9 @@ class Document extends Model
     'description'
 ];
 
-    public function student()
-{
-    return $this->belongsTo(Student::class);
-}
-
-public function documentable()
-{
-    return $this->morphTo();
-}
-
+  public function documentable(): MorphTo
+    {
+        return $this->morphTo();
+    }
 
 }

@@ -26,7 +26,7 @@ class DatabaseSeeder extends Seeder
             CommuneSeeder::class,
             EstablishmentSeeder::class,
             UserSeeder::class,
-            UserDocumentSeeder::class, // Añadir este nuevo seeder
+           /*  UserDocumentSeeder::class, // Añadir este nuevo seeder
             UserPhoneSeeder::class,
             UserScheduleSeeder::class,
             SpecialtySeeder::class,
@@ -35,7 +35,7 @@ class DatabaseSeeder extends Seeder
             CourseSeeder::class,
                  StudentSeeder::class,
             CourseScheduleSeeder::class,
-       
+        */
 
             // Otros seeders...
         ]);

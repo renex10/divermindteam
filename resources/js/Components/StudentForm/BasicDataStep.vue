@@ -2,7 +2,7 @@
 <template>
   <div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Campos para nuevo usuario con nombres corregidos -->
+      <!-- Campos para nuevo usuario -->
       <FormKit
         type="text"
         v-model="formData.new_user.name"
@@ -21,6 +21,19 @@
         name="new_user[last_name]"
         label="Apellidos *"
         placeholder="Apellidos"
+        validation="required"
+        outer-class="mb-0"
+        label-class="formkit-label"
+        input-class="formkit-input"
+      />
+
+      <!-- Nuevo campo: RUT del estudiante -->
+      <FormKit
+        type="text"
+        v-model="formData.student_rut"
+        name="student_rut"
+        label="RUT del Estudiante *"
+        placeholder="12.345.678-9"
         validation="required"
         outer-class="mb-0"
         label-class="formkit-label"
@@ -126,7 +139,8 @@ if (!props.formData.new_user) {
       last_name: '',
       email: '',
       password: ''
-    }
+    },
+    student_rut: '' // Inicializar nuevo campo
   });
 }
 
@@ -157,3 +171,13 @@ console.log("BasicDataStep - Datos recibidos:", {
   courseOptions: courseOptions.value
 });
 </script>
+
+<style scoped>
+.formkit-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.formkit-input {
+  @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border;
+}
+</style>

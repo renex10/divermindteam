@@ -19,12 +19,18 @@ protected $fillable = [
         'consent_pie',
         'data_processing',
         'signed_at',
+         'establishment_id', // ← esto es clave
+
     ];
 
-    public function guardianStudent(): BelongsTo
+   public function relationship(): BelongsTo
     {
-        return $this->belongsTo(GuardianStudent::class);
+        return $this->belongsTo(GuardianStudent::class, 'guardian_student_id');
     }
 
+    public function establishment(): BelongsTo
+    {
+        return $this->belongsTo(Establishment::class);
+    }
 
 }
