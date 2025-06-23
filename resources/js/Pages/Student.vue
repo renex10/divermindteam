@@ -1,5 +1,4 @@
 <template>
-<!--   resources\js\Pages\Student.vue -->
   <DashboardLayout title="Gestión de Estudiantes">
     <template #header>
       <div class="flex justify-between items-center">
@@ -15,22 +14,25 @@
     </template>
 
     <div class="space-y-6">
-      <!-- Cards de estadísticas -->
+      <!-- Cards de estadísticas usando el nuevo componente -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 rounded-lg shadow text-white">
-          <h3 class="text-lg font-medium">Total Estudiantes</h3>
-          <p class="text-3xl font-bold mt-2">{{ students.total || 0 }}</p>
-        </div>
-
-        <div class="bg-gradient-to-r from-green-500 to-emerald-600 p-6 rounded-lg shadow text-white">
-          <h3 class="text-lg font-medium">Estudiantes Activos</h3>
-          <p class="text-3xl font-bold mt-2">{{ activeStudentsCount }}</p>
-        </div>
-
-        <div class="bg-gradient-to-r from-amber-500 to-orange-600 p-6 rounded-lg shadow text-white">
-          <h3 class="text-lg font-medium">Prioridad Alta</h3>
-          <p class="text-3xl font-bold mt-2">{{ highPriorityCount }}</p>
-        </div>
+        <StatCard 
+          title="Total Estudiantes" 
+          :value="students.total || 0"
+          gradient-classes="bg-gradient-to-r from-indigo-500 to-purple-600"
+        />
+        
+        <StatCard 
+          title="Estudiantes Activos" 
+          :value="activeStudentsCount"
+          gradient-classes="bg-gradient-to-r from-green-500 to-emerald-600"
+        />
+        
+        <StatCard 
+          title="Prioridad Alta" 
+          :value="highPriorityCount"
+          gradient-classes="bg-gradient-to-r from-amber-500 to-orange-600"
+        />
       </div>
 
       <!-- Tabla de estudiantes -->
@@ -40,7 +42,7 @@
       </div>
     </div>
 
-    <!-- Modal reemplazado por la nueva estructura -->
+    <!-- Modal -->
     <StudentFormModal
       :isOpen="showModal"
       :initialData="initialFormData"
@@ -57,6 +59,7 @@ import { router } from '@inertiajs/vue3';
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import StudentTable from '@/Components/Students/StudentTable.vue';
 import StudentFormModal from '@/Components/Modal/StudentFormModal.vue';
+import StatCard from '@/Components/Card/StatCard.vue'; // Importar el nuevo componente
 
 const props = defineProps({
   students: {
@@ -107,7 +110,7 @@ const handleDelete = (student) => {};
 
 const showModal = ref(false);
 const initialFormData = ref({});
-const isLoading = ref(false); // Nuevo estado para controlar carga
+const isLoading = ref(false);
 
 const openModal = () => showModal.value = true;
 const closeModal = () => showModal.value = false;
@@ -172,7 +175,6 @@ const handleFormSubmit = async (formData) => {
     
   } catch (error) {
     if (error.response?.status === 422) {
-      // Mostrar errores de validación de forma amigable
       const errors = error.response.data.errors;
       let errorMessages = [];
       
@@ -188,10 +190,4 @@ const handleFormSubmit = async (formData) => {
     isLoading.value = false;
   }
 };
-console.log("Student.vue - Props recibidas:", {
-  students: props.students,
-  courses: props.courses,
-  specialists: props.specialists,
-  users: props.users
-});
 </script>
