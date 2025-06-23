@@ -348,4 +348,18 @@ private function storeDocuments($request, $student)
         }
     }
 }
+
+
+public function stats()
+{
+    $establishmentId = Auth::user()->establishment_id;
+    
+    return response()->json([
+        'total' => Student::where('establishment_id', $establishmentId)->count(),
+        'active' => Student::where('establishment_id', $establishmentId)
+                         ->where('active', true)->count(),
+        'high_priority' => Student::where('establishment_id', $establishmentId)
+                               ->where('priority', 1)->count(),
+    ]);
+}
 }

@@ -54,12 +54,12 @@
 </template>
 
 <script setup>
-import { computed, ref, reactive, onMounted } from 'vue';
+import { computed, ref, reactive, onMounted, onUnmounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import StudentTable from '@/Components/Students/StudentTable.vue';
 import StudentFormModal from '@/Components/Modal/StudentFormModal.vue';
-import StatCard from '@/Components/Card/StatCard.vue'; // Importar el nuevo componente
+import StatCard from '@/Components/Card/StatCard.vue';
 
 const props = defineProps({
   students: {
@@ -84,10 +84,52 @@ const props = defineProps({
   }
 });
 
+// Variables reactivas para las estadísticas
+const stats = reactive({
+  total: props.students.total || 0,
+  active: 0,
+  highPriority: 0
+});
+
+// Inicializar con los valores del servidor
+stats.active = props.students.data.filter(student => student.active).length;
+stats.highPriority = props.students.data.filter(student => student.priority === 1).length;
+
+// Función para obtener las estadísticas actualizadas
+const fetchStats = async () => {
+  try {
+    const response = await axios.get(route('students.stats'));
+    stats.total = response.data.total;
+    stats.active = response.data.active;
+    stats.highPriority = response.data.high_priority;
+  } catch (error) {
+    console.error('Error obteniendo estadísticas:', error);
+  }
+};
+
+// Intervalo para actualizar las estadísticas
+let statsInterval = null;
+
 onMounted(() => {
   if (props.isCreateView) {
     openModal();
   }
+  
+  // Actualizar estadísticas cada 30 segundos
+  statsInterval = setInterval(fetchStats, 30000);
+  
+  // También actualizar después de ciertas acciones
+  window.addEventListener('student-created', fetchStats);
+  window.addEventListener('student-updated', fetchStats);
+  window.addEventListener('student-deleted', fetchStats);
+});
+
+onUnmounted(() => {
+  // Limpiar el intervalo al salir del componente
+  clearInterval(statsInterval);
+  window.removeEventListener('student-created', fetchStats);
+  window.removeEventListener('student-updated', fetchStats);
+  window.removeEventListener('student-deleted', fetchStats);
 });
 
 const formExternalData = reactive({
@@ -97,16 +139,37 @@ const formExternalData = reactive({
 });
 
 const currentStudents = computed(() => props.students.data || []);
-const activeStudentsCount = computed(() => currentStudents.value.filter(student => student.active).length);
-const highPriorityCount = computed(() => currentStudents.value.filter(student => student.priority === 1).length);
+
+// Actualizar las propiedades computadas para usar las variables reactivas
+const activeStudentsCount = computed(() => stats.active);
+const highPriorityCount = computed(() => stats.highPriority);
 
 const handlePageChange = (page) => {
   router.get(route('students.index'), { page }, { preserveState: true, replace: true });
 };
 
-const handleView = (student) => {};
-const handleEdit = (student) => {};
-const handleDelete = (student) => {};
+const handleView = (student) => {
+  // Lógica para ver detalles del estudiante
+};
+
+const handleEdit = (student) => {
+  // Lógica para editar estudiante
+  window.dispatchEvent(new CustomEvent('student-updated'));
+  fetchStats();
+};
+
+const handleDelete = async (student) => {
+  // Lógica para eliminar estudiante
+  try {
+    await axios.delete(route('students.destroy', student.id));
+    window.dispatchEvent(new CustomEvent('student-deleted'));
+    fetchStats();
+    router.reload({ only: ['students'] });
+  } catch (error) {
+    console.error('Error eliminando estudiante:', error);
+    alert('No se pudo eliminar el estudiante');
+  }
+};
 
 const showModal = ref(false);
 const initialFormData = ref({});
@@ -171,10 +234,23 @@ const handleFormSubmit = async (formData) => {
     });
     
     closeModal();
-    router.reload();
+    
+    // Disparar evento para actualizar estadísticas
+    window.dispatchEvent(new CustomEvent('student-created'));
+    
+    // Recargar solo la lista de estudiantes
+    router.reload({
+      only: ['students'],
+      preserveState: true,
+      onSuccess: () => {
+        // Actualizar las estadísticas después de recargar
+        fetchStats();
+      }
+    });
     
   } catch (error) {
     if (error.response?.status === 422) {
+      // Mostrar errores de validación de forma amigable
       const errors = error.response.data.errors;
       let errorMessages = [];
       
