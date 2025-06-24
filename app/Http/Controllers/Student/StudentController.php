@@ -32,89 +32,89 @@ class StudentController extends Controller
      * @param Request $request
      * @return \Inertia\Response
      */
-   public function index(Request $request)
-{
-    // Obtener parámetros de paginación desde la request
-    $perPage = $request->input('perPage', 10);
-    $page = $request->input('page', 1);
+    public function index(Request $request)
+    {
+        // Obtener parámetros de paginación desde la request
+        $perPage = $request->input('perPage', 10);
+        $page = $request->input('page', 1);
 
-    // Consulta optimizada con relaciones corregidas
-    $studentsQuery = Student::with([
-        'user.document',                    // ✅ Correcto: Student->User->UserDocument
-        'user.phones.country',              // ✅ Correcto: Student->User->UserPhone->Country
-        'establishment',                    // ✅ Correcto: Student->Establishment
-        'courses',                          // ✅ Correcto: Student->Course (many-to-many)
-        'assignedSpecialist.user',          // ✅ Correcto: Student->Professional->User
-        'assignedSpecialist.specialty',     // ✅ Correcto: Student->Professional->Specialty
-        'guardians',                        // ✅ Correcto: Student->User (many-to-many via guardian_students)
-        'documents'                         // ✅ Correcto: Student->Document (morph)
-    ])
-        ->orderBy('created_at', 'desc')
-        ->orderBy('priority', 'asc');
+        // Consulta optimizada con relaciones corregidas
+        $studentsQuery = Student::with([
+            'user.document',                    // ✅ Correcto: Student->User->UserDocument
+            'user.phones.country',              // ✅ Correcto: Student->User->UserPhone->Country
+            'establishment',                    // ✅ Correcto: Student->Establishment
+            'courses',                          // ✅ Correcto: Student->Course (many-to-many)
+            'assignedSpecialist.user',          // ✅ Correcto: Student->Professional->User
+            'assignedSpecialist.specialty',     // ✅ Correcto: Student->Professional->Specialty
+            'guardians',                        // ✅ Correcto: Student->User (many-to-many via guardian_students)
+            'documents'                         // ✅ Correcto: Student->Document (morph)
+        ])
+            ->orderBy('created_at', 'desc')
+            ->orderBy('priority', 'asc');
 
-    // Obtener datos paginados
-    $students = $studentsQuery->paginate($perPage, ['*'], 'page', $page);
-    $students->appends($request->query());
+        // Obtener datos paginados
+        $students = $studentsQuery->paginate($perPage, ['*'], 'page', $page);
+        $students->appends($request->query());
 
-    // Transformar datos usando StudentResource
-    $transformedStudents = [
-        'data' => StudentResource::collection($students->items()),
-        'current_page' => $students->currentPage(),
-        'last_page' => $students->lastPage(),
-        'per_page' => $students->perPage(),
-        'total' => $students->total(),
-        'from' => $students->firstItem(),
-        'to' => $students->lastItem(),
-        'path' => $students->path(),
-        'links' => $students->linkCollection()->toArray()
-    ];
+        // Transformar datos usando StudentResource
+        $transformedStudents = [
+            'data' => StudentResource::collection($students->items()),
+            'current_page' => $students->currentPage(),
+            'last_page' => $students->lastPage(),
+            'per_page' => $students->perPage(),
+            'total' => $students->total(),
+            'from' => $students->firstItem(),
+            'to' => $students->lastItem(),
+            'path' => $students->path(),
+            'links' => $students->linkCollection()->toArray()
+        ];
 
-    // Obtener cursos (optimizado)
-    $courses = Course::orderBy('name')->get(['id', 'name']);
+        // Obtener cursos (optimizado)
+        $courses = Course::orderBy('name')->get(['id', 'name']);
 
-    // Obtener especialistas activos (optimizado)
-    $specialists = Professional::with(['user:id,name,last_name', 'specialty:id,name'])
-        ->where('active', true)
-        ->get()
-        ->map(function ($professional) {
-            return [
-                'id' => $professional->id,
-                'name' => $professional->user->name,
-                'last_name' => $professional->user->last_name,
-                'specialty' => $professional->specialty->name,
-                'full_name' => $professional->user->name . ' ' . $professional->user->last_name
-            ];
-        });
+        // Obtener especialistas activos (optimizado)
+        $specialists = Professional::with(['user:id,name,last_name', 'specialty:id,name'])
+            ->where('active', true)
+            ->get()
+            ->map(function ($professional) {
+                return [
+                    'id' => $professional->id,
+                    'name' => $professional->user->name,
+                    'last_name' => $professional->user->last_name,
+                    'specialty' => $professional->specialty->name,
+                    'full_name' => $professional->user->name . ' ' . $professional->user->last_name
+                ];
+            });
 
-    // Obtener usuarios con RUT (optimizado)
-    $users = User::with('document:id,user_id,rut')
-        ->get(['id', 'name', 'last_name'])
-        ->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'last_name' => $user->last_name,
-                'rut' => $user->document->rut ?? 'Sin RUT'
-            ];
-        });
+        // Obtener usuarios con RUT (optimizado)
+        $users = User::with('document:id,user_id,rut')
+            ->get(['id', 'name', 'last_name'])
+            ->map(function ($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'last_name' => $user->last_name,
+                    'rut' => $user->document->rut ?? 'Sin RUT'
+                ];
+            });
 
-    // Debug: Verificar datos obtenidos
-    Log::debug('Datos para vista Student:', [
-        'students_count' => $students->total(),
-        'last_student' => $students->first() ? $students->first()->created_at : null,
-        'courses_count' => $courses->count(),
-        'specialists_count' => $specialists->count(),
-        'users_count' => $users->count()
-    ]);
+        // Debug: Verificar datos obtenidos
+        Log::debug('Datos para vista Student:', [
+            'students_count' => $students->total(),
+            'last_student' => $students->first() ? $students->first()->created_at : null,
+            'courses_count' => $courses->count(),
+            'specialists_count' => $specialists->count(),
+            'users_count' => $users->count()
+        ]);
 
-    // Retornar vista con todos los datos necesarios
-    return Inertia::render('Student', [
-        'students' => $transformedStudents,
-        'courses' => $courses,
-        'specialists' => $specialists,
-        'users' => $users
-    ]);
-}
+        // Retornar vista con todos los datos necesarios
+        return Inertia::render('Student', [
+            'students' => $transformedStudents,
+            'courses' => $courses,
+            'specialists' => $specialists,
+            'users' => $users
+        ]);
+    }
 
     /**
      * Muestra el formulario de creación de estudiantes
@@ -402,4 +402,56 @@ class StudentController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+   public function update(StoreStudentRequest $request, Student $student)
+{
+    // Paso 1: Iniciar transacción para asegurar integridad si ocurre un error
+    DB::beginTransaction();
+
+    try {
+        // Paso 2: Validar todos los datos provenientes del formulario
+        $validated = $request->validated();
+
+        // Paso 3: Preparar los datos del usuario asociado al estudiante
+        $userData = [
+            'name'      => $validated['new_user']['name'],
+            'last_name' => $validated['new_user']['last_name'],
+            'email'     => $validated['new_user']['email'],
+        ];
+
+        // Paso 4: Si se envió una nueva contraseña, actualizarla encriptada
+        if (isset($validated['new_user']['password']) && !empty($validated['new_user']['password'])) {
+            $userData['password'] = Hash::make($validated['new_user']['password']);
+        }
+
+        // Paso 5: Actualizar datos del usuario
+        $student->user->update($userData);
+
+        // Paso 6: Actualizar los datos propios del estudiante
+        $student->update([
+            'birth_date'            => $validated['birth_date'],
+            'diagnosis'             => $validated['diagnosis'] ?? null,
+            'need_type'             => $validated['need_type'],
+            'priority'              => $validated['priority'],
+            'special_needs'         => $validated['special_needs'] ?? null,
+            'assigned_specialist_id'=> $validated['assigned_specialist_id'],
+            'evaluation_date'       => $validated['evaluation_date'],
+            'initial_observations'  => $validated['initial_observations'] ?? null,
+        ]);
+
+        // Paso 7: Confirmar cambios si todo fue exitoso
+        DB::commit();
+
+        // Paso 8: Redirigir al index con mensaje de éxito
+        return redirect()->route('students.index')->with('success', 'Estudiante actualizado');
+    } catch (\Exception $e) {
+        // Paso 9: Revertir todos los cambios si algo falla
+        DB::rollBack();
+
+        // Paso 10: Registrar el error en el log y enviar mensaje al usuario
+        Log::error('Error actualizando estudiante', ['error' => $e->getMessage()]);
+
+        return back()->withErrors(['error' => 'Ocurrió un error al actualizar']);
+    }
+}
 }

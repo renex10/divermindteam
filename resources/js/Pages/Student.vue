@@ -14,7 +14,7 @@
     </template>
 
     <div class="space-y-6">
-      <!-- Cards de estadísticas usando el nuevo componente -->
+      <!-- Cards de estadísticas -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <StatCard 
           title="Total Estudiantes" 
@@ -42,18 +42,19 @@
       </div>
     </div>
 
-        <!-- Modal de perfil -->
+    <!-- Modal de perfil -->
     <StudentProfileModal
       :isOpen="showProfileModal"
       :student="selectedStudent"
       @close="showProfileModal = false"
     />
 
-    <!-- Modal -->
+    <!-- Modal de formulario (para crear y editar) -->
     <StudentFormModal
       :isOpen="showModal"
       :initialData="initialFormData"
       :externalData="formExternalData"
+      :isEditing="!!editingStudent"  
       @close="closeModal"
       @submit="handleFormSubmit"
     />
@@ -68,12 +69,14 @@ import StudentTable from '@/Components/Students/StudentTable.vue';
 import StudentFormModal from '@/Components/Modal/StudentFormModal.vue';
 import StatCard from '@/Components/Card/StatCard.vue';
 import StudentProfileModal from '@/Components/Modal/StudentProfileModal.vue';
+import { PlusIcon } from '@heroicons/vue/24/outline';
 
-// ... variables existentes ...
+// Referencia para el estudiante seleccionado en la vista de perfil
 const selectedStudent = ref(null);
 const showProfileModal = ref(false);
 
-
+// Referencia para el estudiante que se está editando (null si es creación)
+const editingStudent = ref(null);
 
 const props = defineProps({
   students: {
@@ -163,20 +166,36 @@ const handlePageChange = (page) => {
 };
 
 const handleView = (student) => {
-  // Lógica para ver detalles del estudiante
-
-    selectedStudent.value = student;
+  selectedStudent.value = student;
   showProfileModal.value = true;
 };
 
 const handleEdit = (student) => {
-  // Lógica para editar estudiante
-  window.dispatchEvent(new CustomEvent('student-updated'));
-  fetchStats();
+  editingStudent.value = student;
+
+  // SOLUCIÓN: Usar encadenamiento opcional para courses
+  initialFormData.value = {
+    new_user: {
+      name: student.user.name,
+      last_name: student.user.last_name,
+      email: student.user.email,
+      password: '',
+    },
+    birth_date: student.birth_date,
+    course_id: student.courses?.length > 0 ? student.courses[0].id : null,
+    diagnosis: student.diagnosis,
+    need_type: student.need_type,
+    priority: student.priority,
+    special_needs: student.special_needs,
+    assigned_specialist: student.assigned_specialist_id,
+    evaluation_date: student.evaluation_date,
+    initial_observations: student.initial_observations,
+  };
+
+  showModal.value = true;
 };
 
 const handleDelete = async (student) => {
-  // Lógica para eliminar estudiante
   try {
     await axios.delete(route('students.destroy', student.id));
     window.dispatchEvent(new CustomEvent('student-deleted'));
@@ -192,25 +211,31 @@ const showModal = ref(false);
 const initialFormData = ref({});
 const isLoading = ref(false);
 
-const openModal = () => showModal.value = true;
-const closeModal = () => showModal.value = false;
+const openModal = () => {
+  editingStudent.value = null;
+  initialFormData.value = {};
+  showModal.value = true;
+};
+
+const closeModal = () => {
+  showModal.value = false;
+  initialFormData.value = {};
+  editingStudent.value = null;
+};
 
 const handleFormSubmit = async (formData) => {
   isLoading.value = true;
-  
+
   try {
     const form = new FormData();
-    
-    // Datos del usuario estudiante
     const newUserData = {
       name: formData.new_user.name,
       last_name: formData.new_user.last_name,
       email: formData.new_user.email,
-      password: formData.new_user.password
+      ...(formData.new_user.password && { password: formData.new_user.password }),
     };
     form.append('new_user', JSON.stringify(newUserData));
-    
-    // Datos principales del estudiante
+
     form.append('birth_date', formData.birth_date);
     form.append('course_id', formData.course_id);
     form.append('diagnosis', formData.diagnosis || '');
@@ -220,64 +245,64 @@ const handleFormSubmit = async (formData) => {
     form.append('assigned_specialist_id', formData.assigned_specialist);
     form.append('evaluation_date', formData.evaluation_date);
     form.append('initial_observations', formData.initial_observations || '');
-    
-    // Datos de consentimiento
+
     form.append('consent_pie', formData.consent_pie ? '1' : '0');
     form.append('data_processing', formData.data_processing ? '1' : '0');
-    
-    // Solo agregar datos de apoderado si hay consentimiento PIE
+
     if (formData.consent_pie) {
       form.append('guardian_email', formData.guardian_email || '');
       form.append('guardian_name', formData.guardian_name || '');
       form.append('guardian_rut', formData.guardian_rut || '');
       form.append('relationship', formData.relationship || '');
     }
-    
-    // Archivos
+
     if (formData.medical_report) {
       form.append('medical_report', formData.medical_report);
     }
-    
+
     if (formData.previous_reports?.length) {
       formData.previous_reports.forEach((file, index) => {
         form.append(`previous_reports[${index}]`, file);
       });
     }
 
-    const response = await axios.post(route('students.store'), form, {
+    const isEditing = editingStudent.value !== null;
+    const url = isEditing
+      ? route('students.update', editingStudent.value.id)
+      : route('students.store');
+
+    if (isEditing) {
+      form.append('_method', 'PUT');
+    }
+
+    await axios.post(url, form, {
       headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+        'Content-Type': 'multipart/form-data',
+      },
     });
-    
+
     closeModal();
-    
-    // Disparar evento para actualizar estadísticas
-    window.dispatchEvent(new CustomEvent('student-created'));
-    
-    // Recargar solo la lista de estudiantes
+    window.dispatchEvent(
+      new CustomEvent(isEditing ? 'student-updated' : 'student-created')
+    );
+
     router.reload({
       only: ['students'],
       preserveState: true,
       onSuccess: () => {
-        // Actualizar las estadísticas después de recargar
         fetchStats();
-      }
+      },
     });
-    
   } catch (error) {
     if (error.response?.status === 422) {
-      // Mostrar errores de validación de forma amigable
       const errors = error.response.data.errors;
       let errorMessages = [];
-      
       for (const field in errors) {
         errorMessages.push(...errors[field]);
       }
-      
       alert(`Errores de validación:\n- ${errorMessages.join('\n- ')}`);
     } else {
-      alert('Error al guardar el estudiante. Por favor intente nuevamente.');
+      alert('Error al procesar la solicitud. Intenta nuevamente.');
     }
   } finally {
     isLoading.value = false;

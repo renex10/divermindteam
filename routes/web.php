@@ -36,6 +36,8 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
         Route::get('/students/stats', [StudentController::class, 'stats'])->name('students.stats');
         Route::delete('/students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
         // routes/web.php
-      /*   Route::get('/estudiantes/crear', [StudentController::class, 'create'])
+        Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
+        // routes/web.php
+        /*   Route::get('/estudiantes/crear', [StudentController::class, 'create'])
             ->name('students.create'); */
     });
