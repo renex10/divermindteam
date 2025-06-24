@@ -24,6 +24,7 @@
     "dependencies": {
         "@formkit/themes": "^1.6.9",
         "@formkit/vue": "^1.6.9",
-        "@heroicons/vue": "^2.2.0"
+        "@heroicons/vue": "^2.2.0",
+        "date-fns": "^4.1.0"
     }
 }

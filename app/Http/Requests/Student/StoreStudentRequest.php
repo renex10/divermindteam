@@ -49,7 +49,7 @@ class StoreStudentRequest extends FormRequest
             // Asignación de especialista
             'assigned_specialist_id' => [
                 'required',
-                Rule::exists('professionals', 'id')->where('establishment_id', $establishmentId)
+    Rule::exists('professionals', 'id')->where('establishment_id', $establishmentId)
             ],
             'evaluation_date' => 'required|date',
             'initial_observations' => 'nullable|string',

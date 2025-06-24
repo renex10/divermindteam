@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\Specialty;
 
 class Student extends Model
 {
@@ -53,5 +54,12 @@ protected $fillable = [
     {
         return $this->morphMany(Document::class, 'documentable');
     }
+
+public function assignedSpecialist(): BelongsTo
+    {
+        return $this->belongsTo(Professional::class, 'assigned_specialist_id');
+    }
+
+
 
 }

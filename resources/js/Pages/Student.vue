@@ -42,6 +42,13 @@
       </div>
     </div>
 
+        <!-- Modal de perfil -->
+    <StudentProfileModal
+      :isOpen="showProfileModal"
+      :student="selectedStudent"
+      @close="showProfileModal = false"
+    />
+
     <!-- Modal -->
     <StudentFormModal
       :isOpen="showModal"
@@ -60,6 +67,13 @@ import DashboardLayout from '@/Layouts/DashboardLayout.vue';
 import StudentTable from '@/Components/Students/StudentTable.vue';
 import StudentFormModal from '@/Components/Modal/StudentFormModal.vue';
 import StatCard from '@/Components/Card/StatCard.vue';
+import StudentProfileModal from '@/Components/Modal/StudentProfileModal.vue';
+
+// ... variables existentes ...
+const selectedStudent = ref(null);
+const showProfileModal = ref(false);
+
+
 
 const props = defineProps({
   students: {
@@ -150,6 +164,9 @@ const handlePageChange = (page) => {
 
 const handleView = (student) => {
   // Lógica para ver detalles del estudiante
+
+    selectedStudent.value = student;
+  showProfileModal.value = true;
 };
 
 const handleEdit = (student) => {

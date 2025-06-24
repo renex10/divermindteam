@@ -23,6 +23,12 @@ Schema::create('students', function (Blueprint $table) {
         ->constrained('establishments')
         ->onDelete('cascade'); // Borrar estudiante si se borra establecimiento
 
+    $table->foreignId('assigned_specialist_id')
+        ->nullable()
+        ->constrained('professionals') // Relación con profesionales
+        ->onDelete('set null'); // Si se elimina el profesional, se establece null
+    // ... resto de campos ...
+
     // Datos exclusivos del estudiante
     $table->date('birth_date');
     $table->enum('need_type', ['permanent', 'temporary'])->default('temporary');
