@@ -1,6 +1,6 @@
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/divermin/public_html/
+    - export DEPLOYPATH=/home/divermin/divermidteam/public_html/
     # Copiar todo el contenido de public a public_html
     - /bin/cp -R public/* "$DEPLOYPATH"
     # Copiar el archivo index.php modificado (que debe estar en la raíz)
