@@ -173,7 +173,6 @@ const handleView = (student) => {
 const handleEdit = (student) => {
   editingStudent.value = student;
 
-  // SOLUCIÓN: Usar encadenamiento opcional para courses
   initialFormData.value = {
     new_user: {
       name: student.user.name,
@@ -190,6 +189,16 @@ const handleEdit = (student) => {
     assigned_specialist: student.assigned_specialist_id,
     evaluation_date: student.evaluation_date,
     initial_observations: student.initial_observations,
+
+    // Campos del apoderado para precarga
+    guardian_name: student.guardian_name || '',
+    guardian_rut: student.guardian_rut || '',
+    relationship: student.relationship || '',
+    consent_pie: student.consent_pie ?? false,
+    data_processing: student.data_processing ?? false,
+
+    medical_report: null,
+    previous_reports: [],
   };
 
   showModal.value = true;

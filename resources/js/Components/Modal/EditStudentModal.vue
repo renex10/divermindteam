@@ -1,8 +1,8 @@
 <!-- resources/js/Components/Modal/EditStudentModal.vue -->
-<template>
-  <BaseModal :isOpen="isOpen" :title="title" @close="emit('close')">
+<!-- <template>
+  <BaseModal :isOpen="isOpen" :title="title" @close="emit('close')"> -->
     <!-- Contenido del formulario -->
-    <StudentForm
+  <!--   <StudentForm
       :initial-data="initialData"
       :external-data="externalData"
       :is-loading="isLoading"
@@ -37,4 +37,4 @@ const emit = defineEmits(['close', 'submit'])
 const handleSubmit = (formData) => {
   emit('submit', formData)
 }
-</script>
+</script> -->

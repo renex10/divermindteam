@@ -1,4 +1,3 @@
-<!-- resources/js/Components/StudentForm/AssignmentStep.vue -->
 <template>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
     <!-- 
@@ -63,74 +62,50 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted } from 'vue';
 
-// =================================================================
-// PROPS (PROPIEDADES RECIBIDAS)
-// =================================================================
 const props = defineProps({
-  // Objeto reactivo con datos del formulario
   formData: {
     type: Object,
     required: true
   },
-  
-  // Datos externos (especialistas, cursos, etc.)
   externalData: {
     type: Object,
     default: () => ({})
   }
 });
 
-// =================================================================
-// TRANSFORMACIÓN DE ESPECIALISTAS
-// =================================================================
-/**
- * Transforma los especialistas a formato compatible con FormKit
- * 
- * Flujo de datos:
- * 1. Backend: Obtiene profesionales con usuarios
- * 2. Student.vue: Recibe especialistas como prop
- * 3. Se pasan a través de los componentes hasta aquí
- * 
- * Estructura esperada en externalData.specialists:
- * [
- *   { id: 1, name: "Juan", last_name: "Pérez", ... },
- *   ...
- * ]
- */
+// Inicializar valores por defecto para evitar undefined y para que se reflejen en inputs
+onMounted(() => {
+  if (props.formData.assigned_specialist === undefined) {
+    props.formData.assigned_specialist = null;
+  }
+  if (props.formData.evaluation_date === undefined) {
+    props.formData.evaluation_date = '';
+  }
+  if (props.formData.initial_observations === undefined) {
+    props.formData.initial_observations = '';
+  }
+});
+
 const specialistOptions = computed(() => {
-  // 1. Verificar si hay especialistas
   if (!props.externalData?.specialists) {
     console.error("No se recibieron especialistas");
     return [];
   }
   
-  // 2. Validar tipo de datos
   if (!Array.isArray(props.externalData.specialists)) {
     console.error("'specialists' debe ser un array", props.externalData.specialists);
     return [];
   }
   
-  // 3. Transformar a formato {value, label}
-  return props.externalData.specialists.map(specialist => {
-    return {
-      value: specialist.id,
-      label: `${specialist.name} ${specialist.last_name}`
-    };
-  });
+  return props.externalData.specialists.map(specialist => ({
+    value: specialist.id,
+    label: `${specialist.name} ${specialist.last_name}`
+  }));
 });
-
-// Debug: Verificar opciones transformadas
-console.log("Opciones de especialistas:", specialistOptions.value);
 </script>
 
-<!-- 
-  =================================================================
-  ESTILOS COMPONENTE
-  =================================================================
-  Estilos consistentes con el resto del formulario
--->
 <style scoped>
 .formkit-label {
   @apply block text-sm font-medium text-gray-700 mb-1;

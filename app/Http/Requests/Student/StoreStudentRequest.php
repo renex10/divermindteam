@@ -41,6 +41,9 @@ class StoreStudentRequest extends FormRequest
                 'required',
                 Rule::exists('courses', 'id')->where('establishment_id', $establishmentId)
             ],
+            'new_user.password' => $this->isMethod('put') ? 'nullable|string|min:8' : 'required|string|min:8',
+            // Nuevo campo RUT
+        'student_rut' => 'required|string|max:20',
             'diagnosis' => 'nullable|string',
             'need_type' => ['required', Rule::in(['permanent', 'temporary'])],
             'priority' => 'required|integer|min:1|max:3',
@@ -98,13 +101,14 @@ class StoreStudentRequest extends FormRequest
 
 public function prepareForValidation()
 {
-    // Siempre procesar new_user como JSON
-    if ($this->has('new_user')) {
-        $newUserData = is_string($this->new_user) 
-            ? json_decode($this->new_user, true) 
-            : $this->new_user;
-        
-        $this->merge(['new_user' => $newUserData]);
+    // Procesar new_user como JSON
+    if ($this->has('new_user') && is_string($this->new_user)) {
+        $this->merge(['new_user' => json_decode($this->new_user, true)]);
+    }
+
+    // Asegurar que student_rut esté presente
+    if (!$this->has('student_rut')) {
+        $this->merge(['student_rut' => '']);
     }
 
     // Convertir booleanos

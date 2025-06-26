@@ -1,12 +1,11 @@
-<!-- resources/js/Components/StudentForm/BasicDataStep.vue -->
 <template>
   <div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Campos para nuevo usuario -->
       <FormKit
         type="text"
-        :value="formData.new_user.name"
-        @input="updateNewUser('name', $event)"
+        :modelValue="formData.new_user?.name"
+        @update:modelValue="value => updateNewUser('name', value)"
         name="new_user[name]"
         label="Nombres *"
         placeholder="Ingrese nombres"
@@ -18,8 +17,8 @@
 
       <FormKit
         type="text"
-        :value="formData.new_user.last_name"
-        @input="updateNewUser('last_name', $event)"
+        :modelValue="formData.new_user?.last_name"
+        @update:modelValue="value => updateNewUser('last_name', value)"
         name="new_user[last_name]"
         label="Apellidos *"
         placeholder="Apellidos"
@@ -29,10 +28,11 @@
         input-class="formkit-input"
       />
 
-      <!-- Nuevo campo: RUT del estudiante -->
+      <!-- Campo RUT del estudiante -->
       <FormKit
         type="text"
-        v-model="formData.student_rut"
+        :modelValue="formData.student_rut"
+        @update:modelValue="value => updateField('student_rut', value)"
         name="student_rut"
         label="RUT del Estudiante *"
         placeholder="12.345.678-9"
@@ -44,8 +44,8 @@
 
       <FormKit
         type="email"
-        :value="formData.new_user.email"
-        @input="updateNewUser('email', $event)"
+        :modelValue="formData.new_user?.email"
+        @update:modelValue="value => updateNewUser('email', value)"
         name="new_user[email]"
         label="Email *"
         placeholder="correo@ejemplo.com"
@@ -57,20 +57,21 @@
 
       <FormKit
         type="password"
-        :value="formData.new_user.password"
-        @input="updateNewUser('password', $event)"
+        :modelValue="formData.new_user?.password || ''"
+        @update:modelValue="value => updateNewUser('password', value)"
         name="new_user[password]"
         label="Contraseña *"
-        validation="required|length:8"
+        placeholder="Dejar vacío para mantener actual"
+        validation="length:8"
         outer-class="mb-0"
         label-class="formkit-label"
         input-class="formkit-input"
       />
 
-      <!-- Campos comunes -->
       <FormKit
         type="date"
-        v-model="formData.birth_date"
+        :modelValue="formatDateForInput(formData.birth_date)"
+        @update:modelValue="value => updateField('birth_date', value)"
         name="birth_date"
         label="Fecha de Nacimiento *"
         validation="required"
@@ -79,9 +80,11 @@
         input-class="formkit-input"
       />
 
+      <!-- Selector de curso corregido -->
       <FormKit
         type="select"
-        v-model="formData.course_id"
+        :modelValue="formData.course_id ? String(formData.course_id) : ''"
+        @update:modelValue="value => updateField('course_id', value ? Number(value) : null)"
         name="course_id"
         label="Curso *"
         :options="courseOptions"
@@ -94,7 +97,8 @@
 
       <FormKit
         type="text"
-        v-model="formData.diagnosis"
+        :modelValue="formData.diagnosis"
+        @update:modelValue="value => updateField('diagnosis', value)"
         name="diagnosis"
         label="Diagnóstico Preliminar"
         placeholder="Ej: TEL, TDAH, DEA..."
@@ -105,7 +109,8 @@
 
       <FormKit
         type="email"
-        v-model="formData.guardian_email"
+        :modelValue="formData.guardian_email"
+        @update:modelValue="value => updateField('guardian_email', value)"
         name="guardian_email"
         label="Contacto de Apoderado"
         placeholder="correo@ejemplo.com"
@@ -119,14 +124,27 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 
 const emit = defineEmits(['update:formData']);
 
 const props = defineProps({
   formData: {
     type: Object,
-    required: true
+    required: true,
+    default: () => ({
+      new_user: {
+        name: '',
+        last_name: '',
+        email: '',
+        password: ''
+      },
+      student_rut: '',
+      birth_date: '',
+      course_id: null,
+      diagnosis: '',
+      guardian_email: ''
+    })
   },
   externalData: {
     type: Object,
@@ -134,56 +152,127 @@ const props = defineProps({
   }
 });
 
-// Función para actualizar campos anidados
-const updateNewUser = (field, value) => {
-  emit('update:formData', {
-    ...props.formData,
-    new_user: {
-      ...props.formData.new_user,
-      [field]: value
-    }
-  });
-};
-
-// Inicializar estructura para nuevo usuario
-if (!props.formData.new_user) {
-  emit('update:formData', {
-    ...props.formData,
-    new_user: {
+// Función para inicializar campos faltantes
+const initializeMissingFields = () => {
+  const updates = {};
+  
+  // Inicializar new_user si no existe o está incompleto
+  if (!props.formData.new_user || typeof props.formData.new_user !== 'object') {
+    updates.new_user = {
       name: '',
       last_name: '',
       email: '',
       password: ''
-    },
-    student_rut: '' // Inicializar nuevo campo
+    };
+  } else {
+    const defaultNewUser = { name: '', last_name: '', email: '', password: '' };
+    const newUser = { ...defaultNewUser, ...props.formData.new_user };
+    
+    // Solo actualizar si hay cambios
+    if (JSON.stringify(newUser) !== JSON.stringify(props.formData.new_user)) {
+      updates.new_user = newUser;
+    }
+  }
+
+  // Inicializar otros campos
+  const defaultFields = {
+    student_rut: '',
+    birth_date: '',
+    course_id: null,
+    diagnosis: '',
+    guardian_email: ''
+  };
+
+  Object.keys(defaultFields).forEach(key => {
+    if (props.formData[key] === undefined) {
+      updates[key] = defaultFields[key];
+    }
   });
-}
 
-// Observar cambios en formData
-watch(() => props.formData, (newValue) => {
-  emit('update:formData', newValue);
-}, { deep: true });
+  // Emitir actualización si hay cambios
+  if (Object.keys(updates).length > 0) {
+    emit('update:formData', {
+      ...props.formData,
+      ...updates
+    });
+  }
+};
 
-const courseOptions = computed(() => {
-  if (!props.externalData?.courses) return [];
+// Inicializar campos faltantes al montar
+onMounted(() => {
+  console.log('formData recibido en BasicDataStep:', props.formData);
+  console.log('externalData recibido:', props.externalData);
+  initializeMissingFields();
+});
+
+const updateNewUser = (field, value) => {
+  const newUser = {
+    ...(props.formData.new_user || {}),
+    [field]: value
+  };
+
+  emit('update:formData', {
+    ...props.formData,
+    new_user: newUser
+  });
+};
+
+const updateField = (field, value) => {
+  emit('update:formData', {
+    ...props.formData,
+    [field]: value
+  });
+};
+
+// Función para formatear fecha
+const formatDateForInput = (dateValue) => {
+  if (!dateValue) return '';
   
+  // Manejar diferentes formatos de fecha
+  if (typeof dateValue === 'string') {
+    // Si ya está en formato YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      return dateValue;
+    }
+    
+    // Si está en formato ISO
+    if (dateValue.includes('T')) {
+      return dateValue.split('T')[0];
+    }
+  }
+  
+  // Intentar convertir a fecha
+  try {
+    const date = new Date(dateValue);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
+    }
+  } catch (error) {
+    console.warn('Error al formatear fecha:', dateValue, error);
+  }
+  
+  return '';
+};
+
+// Generar opciones de cursos
+const courseOptions = computed(() => {
+  console.log('Calculando courseOptions, courses:', props.externalData?.courses);
+  
+  if (!props.externalData?.courses) return [];
   if (!Array.isArray(props.externalData.courses)) {
     console.warn('courses no es un array:', props.externalData.courses);
     return [];
   }
-  
-  return props.externalData.courses
-    .map(course => {
-      if (!course.id || !course.name) return null;
-      return { value: course.id, label: course.name };
-    })
-    .filter(Boolean);
-});
 
-console.log("BasicDataStep - Datos recibidos:", {
-  formData: props.formData,
-  externalData: props.externalData,
-  courseOptions: courseOptions.value
+  const options = props.externalData.courses.map(course => {
+    return {
+      value: String(course.id),
+      label: course.name
+    };
+  });
+  
+  console.log('Options generadas:', options);
+  return options;
 });
 </script>
 

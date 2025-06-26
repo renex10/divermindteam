@@ -238,105 +238,113 @@ class StudentController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function store(StoreStudentRequest $request)
-    {
-        // DEBUG: Verificar estructura de datos
-        Log::debug('Datos recibidos en store()', [
-            'all_data' => $request->all(),
-            'new_user' => $request->input('new_user'),
-            'last_name' => $request->input('new_user.last_name')
+ public function store(StoreStudentRequest $request)
+{
+    // DEBUG: Verificar estructura de datos
+    Log::debug('Datos recibidos en store()', [
+        'all_data' => $request->all(),
+        'new_user' => $request->input('new_user'),
+        'last_name' => $request->input('new_user.last_name'),
+        'student_rut' => $request->input('student_rut') // Agregado
+    ]);
+    
+    DB::beginTransaction();
+
+    try {
+        $validated = $request->validated();
+        $establishmentId = Auth::user()->establishment_id;
+
+        // 1. Crear usuario para el estudiante
+        $user = User::create([
+            'name' => $validated['new_user']['name'],
+            'last_name' => $validated['new_user']['last_name'],
+            'email' => $validated['new_user']['email'],
+            'password' => Hash::make($validated['new_user']['password']),
+            'establishment_id' => $establishmentId,
         ]);
-        DB::beginTransaction();
 
-        try {
-            $validated = $request->validated();
-            $establishmentId = Auth::user()->establishment_id;
+        // 2. Crear documento RUT para el ESTUDIANTE
+        UserDocument::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'rut' => $validated['student_rut'], // Usar el RUT del formulario
+                'verified' => false
+            ]
+        );
 
-            // 1. Crear usuario para el estudiante
-            $user = User::create([
-                'name' => $validated['new_user']['name'],
-                'last_name' => $validated['new_user']['last_name'],
-                'email' => $validated['new_user']['email'],
-                'password' => Hash::make($validated['new_user']['password']),
-                'establishment_id' => $establishmentId,
-            ]);
+        // 3. Crear estudiante
+        $student = Student::create([
+            'user_id' => $user->id,
+            'establishment_id' => $user->establishment_id,
+            'birth_date' => $validated['birth_date'],
+            'diagnosis' => $validated['diagnosis'] ?? null,
+            'need_type' => $validated['need_type'],
+            'priority' => $validated['priority'],
+            'special_needs' => $validated['special_needs'] ?? null,
+            'assigned_specialist_id' => $validated['assigned_specialist_id'],
+            'evaluation_date' => $validated['evaluation_date'],
+            'initial_observations' => $validated['initial_observations'] ?? null,
+        ]);
 
-            // 2. Crear documento RUT para el ESTUDIANTE (usando un placeholder único)
-            UserDocument::updateOrCreate(
-                ['user_id' => $user->id],
+        // 4. Asignar curso
+        $student->courses()->attach($validated['course_id']);
+
+        // 5. Manejar apoderados y consentimientos
+        if ($validated['consent_pie']) {
+            // Buscar o crear usuario para el apoderado
+            $guardianUser = User::firstOrCreate(
+                ['email' => $validated['guardian_email']],
                 [
-                    'rut' => 'STUDENT-' . $user->id, // RUT único basado en ID
+                    'name' => $validated['guardian_name'],
+                    'password' => Hash::make(Str::random(40)),
+                    'establishment_id' => $establishmentId,
+                ]
+            );
+
+            // Crear documento RUT para APODERADO
+            UserDocument::updateOrCreate(
+                ['user_id' => $guardianUser->id],
+                [
+                    'rut' => $validated['guardian_rut'],
                     'verified' => false
                 ]
             );
 
-            // 3. Crear estudiante
-            $student = Student::create([
-                'user_id' => $user->id,
-                'establishment_id' => $user->establishment_id,
-                'birth_date' => $validated['birth_date'],
-                'diagnosis' => $validated['diagnosis'] ?? null,
-                'need_type' => $validated['need_type'],
-                'priority' => $validated['priority'],
-                'special_needs' => $validated['special_needs'] ?? null,
-                'assigned_specialist_id' => $validated['assigned_specialist_id'],
-                'evaluation_date' => $validated['evaluation_date'],
-                'initial_observations' => $validated['initial_observations'] ?? null,
-
+            // Crear relación apoderado-estudiante
+            $guardianStudent = GuardianStudent::create([
+                'student_id' => $student->id,
+                'guardian_id' => $guardianUser->id,
+                'establishment_id' => $establishmentId,
+                'is_primary' => true,
+                'relationship' => $validated['relationship'],
             ]);
 
-            // 4. Asignar curso
-            $student->courses()->attach($validated['course_id']);
-
-            // 5. Manejar apoderados y consentimientos
-            if ($validated['consent_pie']) {
-                // Buscar o crear usuario para el apoderado
-                $guardianUser = User::firstOrCreate(
-                    ['email' => $validated['guardian_email']],
-                    [
-                        'name' => $validated['guardian_name'],
-                        'password' => Hash::make(Str::random(40)),
-                        'establishment_id' => $establishmentId,
-                    ]
-                );
-
-                // Crear documento RUT para APODERADO (usando el RUT proporcionado)
-                UserDocument::updateOrCreate(
-                    ['user_id' => $guardianUser->id],
-                    ['rut' => $validated['guardian_rut'], 'verified' => false]
-                );
-
-                // Crear relación apoderado-estudiante
-                $guardianStudent = GuardianStudent::create([
-                    'student_id' => $student->id,
-                    'guardian_id' => $guardianUser->id,
-                    'establishment_id' => $establishmentId,
-                    'is_primary' => true,
-                    'relationship' => $validated['relationship'],
-                ]);
-
-                // Crear consentimiento
-                Consent::create([
-                    'guardian_student_id' => $guardianStudent->id,
-                    'establishment_id' => $establishmentId,
-                    'consent_pie' => true,
-                    'data_processing' => $validated['data_processing'],
-                    'signed_at' => now(),
-                ]);
-            }
-
-            // 6. Guardar documentos médicos
-            $this->storeDocuments($request, $student);
-
-            DB::commit();
-
-            return redirect()->route('students.index')->with('success', 'Estudiante creado exitosamente');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Error creando estudiante', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return back()->withInput()->withErrors('Error: ' . $e->getMessage());
+            // Crear consentimiento
+            Consent::create([
+                'guardian_student_id' => $guardianStudent->id,
+                'establishment_id' => $establishmentId,
+                'consent_pie' => true,
+                'data_processing' => $validated['data_processing'],
+                'signed_at' => now(),
+            ]);
         }
+
+        // 6. Guardar documentos médicos
+        $this->storeDocuments($request, $student);
+
+        DB::commit();
+
+        return redirect()->route('students.index')->with('success', 'Estudiante creado exitosamente');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error creando estudiante', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all()
+        ]);
+        return back()->withInput()->withErrors('Error: ' . $e->getMessage());
     }
+}
     private function storeDocuments($request, $student)
     {
         // Documento médico principal
@@ -403,31 +411,34 @@ class StudentController extends Controller
         }
     }
 
-   public function update(StoreStudentRequest $request, Student $student)
+public function update(StoreStudentRequest $request, Student $student)
 {
-    // Paso 1: Iniciar transacción para asegurar integridad si ocurre un error
     DB::beginTransaction();
 
     try {
-        // Paso 2: Validar todos los datos provenientes del formulario
         $validated = $request->validated();
 
-        // Paso 3: Preparar los datos del usuario asociado al estudiante
         $userData = [
             'name'      => $validated['new_user']['name'],
             'last_name' => $validated['new_user']['last_name'],
             'email'     => $validated['new_user']['email'],
         ];
 
-        // Paso 4: Si se envió una nueva contraseña, actualizarla encriptada
+        // Actualizar contraseña solo si se proporcionó
         if (isset($validated['new_user']['password']) && !empty($validated['new_user']['password'])) {
             $userData['password'] = Hash::make($validated['new_user']['password']);
         }
 
-        // Paso 5: Actualizar datos del usuario
+        // Actualizar usuario
         $student->user->update($userData);
 
-        // Paso 6: Actualizar los datos propios del estudiante
+        // Actualizar RUT del estudiante
+        $student->user->document()->updateOrCreate(
+            ['user_id' => $student->user->id],
+            ['rut' => $validated['student_rut']]
+        );
+
+        // Actualizar datos del estudiante
         $student->update([
             'birth_date'            => $validated['birth_date'],
             'diagnosis'             => $validated['diagnosis'] ?? null,
@@ -439,18 +450,19 @@ class StudentController extends Controller
             'initial_observations'  => $validated['initial_observations'] ?? null,
         ]);
 
-        // Paso 7: Confirmar cambios si todo fue exitoso
+        // Actualizar curso
+        $student->courses()->sync([$validated['course_id']]);
+
         DB::commit();
 
-        // Paso 8: Redirigir al index con mensaje de éxito
         return redirect()->route('students.index')->with('success', 'Estudiante actualizado');
     } catch (\Exception $e) {
-        // Paso 9: Revertir todos los cambios si algo falla
         DB::rollBack();
-
-        // Paso 10: Registrar el error en el log y enviar mensaje al usuario
-        Log::error('Error actualizando estudiante', ['error' => $e->getMessage()]);
-
+        Log::error('Error actualizando estudiante', [
+            'error' => $e->getMessage(),
+            'student_id' => $student->id,
+            'request' => $request->all()
+        ]);
         return back()->withErrors(['error' => 'Ocurrió un error al actualizar']);
     }
 }
