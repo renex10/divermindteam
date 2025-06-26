@@ -1,7 +1,5 @@
-
-
----
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/divermin/divermidteam/
-    - /bin/cp -R images $DEPLOYPATH
+    - export DEPLOYPATH=/home/divermin/public_html/
+    - /bin/mkdir -p "$DEPLOYPATH/images"
+    - /bin/cp -R images/* "$DEPLOYPATH/images"
