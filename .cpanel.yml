@@ -3,3 +3,5 @@ deployment:
     - export DEPLOYPATH=/home/divermin/public_html/
     - /bin/mkdir -p "$DEPLOYPATH/images"
     - /bin/cp -R images/* "$DEPLOYPATH/images"
+    - /bin/cp -R public/* "$DEPLOYPATH"
+    - /bin/cp index.php "$DEPLOYPATH/index.php"
