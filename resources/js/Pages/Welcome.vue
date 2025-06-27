@@ -53,7 +53,8 @@
 </template>
 
 <script>
-export default {
+export defa
+  components: { SectionHome },ult {
 
 }
 </script>
@@ -78,11 +79,14 @@ export default {
 
 <!-- resources/js/Pages/Welcome.vue -->
 <script setup>
+import DescripcionBreve from '@/Components/Landing/feature/DescripcionBreve.vue'
 // 1. Importa tu layout
 import LandingLayout from '@/Layouts/LandingLayout.vue'
+import FeatureHome from '@/Components/Landing/feature/FeatureHome.vue'
 
 // 2. Importa el Hero section
 import HeroHome from '@/Components/Landing/hero/HeroHome.vue'
+import SectionHome from '@/Components/Landing/section/SectionHome.vue'
 
 // 3. Asigna el layout
 defineOptions({
@@ -94,5 +98,8 @@ defineOptions({
   <div>
     <!-- Hero principal -->
     <HeroHome />
+    <section-home></section-home>
+    <FeatureHome/>
+    <descripcion-breve/>
   </div>
 </template>

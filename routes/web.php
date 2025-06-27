@@ -16,6 +16,32 @@ Route::get('/', function () {
     ]);
 })->name('home'); // ✅ SOLUCIÓN CLAVE: Agrega el nombre 'home'
 
+
+// Otras páginas de la landing
+Route::get('/que-es', function () {
+    return Inertia::render('QueEs');
+})->name('que-es');
+
+Route::get('/caracteristicas', function () {
+    return Inertia::render('Caracteristicas');
+})->name('caracteristicas');
+
+Route::get('/beneficios', function () {
+    return Inertia::render('Beneficios');
+})->name('beneficios');
+
+Route::get('/normativa', function () {
+    return Inertia::render('Normativa');
+})->name('normativa');
+
+Route::get('/integraciones', function () {
+    return Inertia::render('Integraciones');
+})->name('integraciones');
+
+// Ruta de login (si usas Breeze)
+Route::get('/login', function () {
+    return Inertia::render('Auth/Login');
+})->name('login');
 // Grupos de rutas con autenticación
 Route::middleware([
     'auth:sanctum',
@@ -32,11 +58,4 @@ Route::middleware([
     Route::delete('/students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
     Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
 });
-Route::view('/inicio', 'placeholder')->name('inicio');
-Route::view('/que-es', 'placeholder')->name('que-es');
-Route::view('/caracteristicas', 'placeholder')->name('caracteristicas');
-Route::view('/beneficios', 'placeholder')->name('beneficios');
-Route::view('/normativa', 'placeholder')->name('normativa');
-Route::view('/integraciones', 'placeholder')->name('integraciones');
-Route::view('/contacto', 'placeholder')->name('contacto');
-/* Route::view('/login', 'auth.login')->name('login'); */
+

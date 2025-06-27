@@ -1,9 +1,20 @@
+@import '@formkit/themes/genesis';
+@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import '@formkit/themes/genesis';
+
 
 
 [x-cloak] {
     display: none;
+}
+
+
+body {
+  background-color: #D9DCD6;
+  font-family: 'Raleway', sans-serif;
+
+
 }
