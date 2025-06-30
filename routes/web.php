@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Student\StudentController;
+use App\Http\Controllers\User\UserController;
 
 // Ruta de inicio CON NOMBRE 'home'
 Route::get('/', function () {
@@ -57,5 +58,10 @@ Route::middleware([
     Route::get('/students/stats', [StudentController::class, 'stats'])->name('students.stats');
     Route::delete('/students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
     Route::put('/students/{student}', [StudentController::class, 'update'])->name('students.update');
+
+
+
+      // 👇 AQUI está la línea que necesitas agregar 👇
+    Route::resource('users', UserController::class); 
 });
 

@@ -12,12 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('courses', function (Blueprint $table) {
-   $table->id();
-            $table->foreignId('establishment_id')->constrained()->onDelete('cascade'); 
-            $table->string('name', 50); 
-            $table->enum('level', ['kinder', 'basic', 'high']); 
-            $table->enum('shift', ['morning', 'afternoon']); 
-            $table->foreignId('teacher_id')->nullable()->constrained('users')->onDelete('set null'); 
+            $table->id();
+            $table->foreignId('establishment_id')->constrained()->onDelete('cascade');
+            $table->string('name', 50);
+            $table->enum('level', ['kinder', 'basic', 'high']);
+            $table->enum('shift', ['morning', 'afternoon']);
+            $table->foreignId('teacher_id')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
 
             // Tabla de cursos académicos en cada establecimiento

@@ -12,10 +12,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('course_schedules', function (Blueprint $table) {
- $table->id();
-            $table->foreignId('course_id')->constrained()->onDelete('cascade'); 
-            $table->time('start_time'); 
-            $table->time('end_time'); 
+            $table->id();
+            $table->foreignId('course_id')->constrained()->onDelete('cascade');
+            $table->time('start_time');
+            $table->time('end_time');
             $table->timestamps();
 
             // Define horarios exactos de los cursos

@@ -109,7 +109,6 @@ const screenWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024
 // Computed
 const isDesktop = computed(() => screenWidth.value >= props.mobileBreakpoint)
 
-// Menu configuration
 const menuItems = ref([
   {
     id: 'dashboard',
@@ -117,6 +116,34 @@ const menuItems = ref([
     icon: HomeIcon,
     href: '/dashboard',
     badge: null
+  },
+  {
+    id: 'usuarios',
+    label: 'Usuarios',
+    icon: UsersIcon,
+    children: [
+       {
+        // ✅ Modifica esta línea para que apunte a la ruta de tu controlador
+        id: 'usuarios.admins',
+        label: 'Administradores',
+        href: '/users' // <--- Cambia esta URL a '/users'
+      },
+      {
+        id: 'usuarios.terapeutas',
+        label: 'Terapeutas',
+        href: '/usuarios/terapeutas'
+      },
+      {
+        id: 'usuarios.profesores',
+        label: 'Profesores',
+        href: '/usuarios/profesores'
+      },
+      {
+        id: 'usuarios.psicologos',
+        label: 'Psicólogos',
+        href: '/usuarios/psicologos'
+      }
+    ]
   },
   {
     id: 'estudiantes',
@@ -171,6 +198,7 @@ const menuItems = ref([
     badge: null
   }
 ])
+
 
 const userMenuItem = ref({
   id: 'profile',

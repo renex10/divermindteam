@@ -11,22 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-  // Usuarios (CAMBIOS CLAVE)
-Schema::create('users', function (Blueprint $table) {
-    $table->id();
-    $table->string('name');
-    $table->string('last_name')->nullable();
-    $table->string('email')->unique();
-    $table->timestamp('email_verified_at')->nullable();
-    $table->string('password');
-    $table->rememberToken();
-    $table->foreignId('current_team_id')->nullable();
-    $table->string('profile_photo_path', 2048)->nullable();
-    $table->foreignId('establishment_id')
-        ->constrained('establishments') // Eliminado nullable()
-        ->onDelete('restrict'); // Prevenir borrado si hay usuarios
-    $table->timestamps();
-});
+        // Usuarios (CAMBIOS CLAVE)
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('last_name')->nullable();
+            $table->string('email')->unique();
+            $table->timestamp('email_verified_at')->nullable();
+            $table->string('password');
+            $table->rememberToken();
+            $table->foreignId('current_team_id')->nullable();
+            $table->string('profile_photo_path', 2048)->nullable();
+            $table->foreignId('establishment_id')
+                ->constrained('establishments') // Eliminado nullable()
+                ->onDelete('restrict'); // Prevenir borrado si hay usuarios
+            $table->timestamps();
+        });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
