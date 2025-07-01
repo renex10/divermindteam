@@ -6,6 +6,13 @@ import { Head, router } from '@inertiajs/vue3';
 import DashboardSidebar from '@/Components/Dashboard/DashboardSidebar.vue';
 import DashboardHeader from '@/Components/Dashboard/DashboardHeader.vue';
 import MobileMenuButton from '@/Components/Dashboard/MobileMenuButton.vue';
+// Importa el preloader
+import PreloaderDashboard from '@/Components/Dashboard/PreloaderDashboard.vue'; 
+
+// Estados para controlar el preloader
+const isLoading = ref(false); // Controla si hay una carga en curso
+const showLoader = ref(false); // Controla si se debe mostrar visualmente el preloader
+let loaderTimeout = null; // Para manejar el tiempo mínimo de visualización
 
 const props = defineProps({
     title: {
@@ -90,6 +97,28 @@ const handleResize = () => {
 
 // Lifecycle
 onMounted(() => {
+    // Mostrar preloader al iniciar navegación
+    router.on('start', () => {
+        // Limpiar timeout si existe
+        if (loaderTimeout) clearTimeout(loaderTimeout);
+        
+        isLoading.value = true;
+        showLoader.value = true;
+    });
+
+    // Ocultar preloader al completar navegación
+    router.on('finish', () => {
+        // Establecer un tiempo mínimo de visualización del preloader (500ms)
+        loaderTimeout = setTimeout(() => {
+            showLoader.value = false; // Inicia la animación de salida
+            
+            // Después de la animación, ocultar completamente
+            setTimeout(() => {
+                isLoading.value = false;
+            }, 300); // Tiempo que dura la animación de salida
+        }, 500); // Tiempo mínimo que se mostrará el preloader
+    });
+
     if (typeof window !== 'undefined') {
         window.addEventListener('resize', handleResize);
     }
@@ -99,6 +128,11 @@ onUnmounted(() => {
     if (typeof window !== 'undefined') {
         window.removeEventListener('resize', handleResize);
     }
+
+    // Limpiar listeners y timeout
+    router.off('start');
+    router.off('finish');
+    if (loaderTimeout) clearTimeout(loaderTimeout);
 });
 
 // Expose for parent components
@@ -111,7 +145,12 @@ defineExpose({
 </script>
 
 <template>
-    <div class="flex h-screen bg-gray-100 overflow-hidden">
+    <div class="flex h-screen bg-gray-100 overflow-hidden relative">
+        <!-- Preloader (se muestra durante transiciones) -->
+        <Transition name="fade">
+            <PreloaderDashboard v-if="showLoader" />
+        </Transition>
+
         <!-- Head para SEO y título -->
         <Head :title="currentPageTitle" />
         
@@ -160,3 +199,44 @@ defineExpose({
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Animación mejorada para el preloader */
+.fade-enter-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  animation: fadeIn 0.3s;
+}
+
+.fade-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+  animation: fadeOut 0.5s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+</style>

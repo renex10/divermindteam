@@ -132,10 +132,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { ChevronDownIcon } from '@heroicons/vue/24/outline'
+// Paso 1: Importaciones necesarias
+import { ref, computed } from 'vue';
+import { ChevronDownIcon } from '@heroicons/vue/24/outline';
+import { usePage } from '@inertiajs/vue3'; // Importamos usePage para acceder a la ruta actual
 
-// Props
+// Paso 2: Definición de propiedades que recibe el componente
 const props = defineProps({
   item: {
     type: Object,
@@ -145,58 +147,70 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  activeItem: {
-    type: String,
-    default: ''
-  },
   linkComponent: {
     type: [String, Object],
     default: 'a'
   }
-})
+});
 
-// Emits
-const emit = defineEmits(['item-click'])
+// Paso 3: Eventos que emite el componente
+const emit = defineEmits(['item-click']);
 
-// State
-const isExpanded = ref(false)
+// Paso 4: Estado reactivo para controlar si el submenú está expandido
+const isExpanded = ref(false);
 
-// Computed
-const hasChildren = computed(() => props.item.children && props.item.children.length > 0)
+// Paso 5: Propiedades computadas
+// - Determina si el ítem tiene hijos
+const hasChildren = computed(() => props.item.children && props.item.children.length > 0);
+
+// - Obtiene la información de la ruta actual
+const page = usePage();
+
+// - Determina si el ítem está activo basado en la ruta actual
 const isActive = computed(() => {
-  if (props.activeItem === props.item.id) return true
+  // Para ítems con hijos: verifica si alguna ruta hija coincide con la ruta actual
   if (hasChildren.value) {
-    return props.item.children.some(child => child.id === props.activeItem)
+    return props.item.children.some(child => 
+      page.url.startsWith(child.href)
+    );
   }
-  return false
-})
+  
+  // Para ítems sin hijos: verifica si la ruta coincide
+  return page.url.startsWith(props.item.href);
+});
 
-// Methods
+// Paso 6: Métodos del componente
+// - Maneja el clic en el ítem principal
 const handleClick = (event) => {
   if (hasChildren.value) {
-    event.preventDefault()
-    isExpanded.value = !isExpanded.value
+    // Si tiene hijos, alterna la expansión y previene la navegación
+    event.preventDefault();
+    isExpanded.value = !isExpanded.value;
   } else {
-    emit('item-click', props.item)
+    // Si no tiene hijos, emite el evento para navegar
+    emit('item-click', props.item);
   }
-}
+};
 
+// - Maneja el clic en un ítem hijo
 const handleChildClick = (child) => {
-  emit('item-click', child)
-}
+  emit('item-click', child);
+};
 
-// Animation methods
+// Paso 7: Métodos de animación para el submenú
 const onEnter = (el) => {
-  el.style.height = '0'
-  el.offsetHeight // trigger reflow
-  el.style.height = el.scrollHeight + 'px'
-}
+  // Prepara la animación de entrada
+  el.style.height = '0';
+  el.offsetHeight; // Fuerza el reflow para que la animación funcione
+  el.style.height = el.scrollHeight + 'px';
+};
 
 const onLeave = (el) => {
-  el.style.height = el.scrollHeight + 'px'
-  el.offsetHeight // trigger reflow
-  el.style.height = '0'
-}
+  // Prepara la animación de salida
+  el.style.height = el.scrollHeight + 'px';
+  el.offsetHeight; // Fuerza el reflow
+  el.style.height = '0';
+};
 </script>
 
 <style scoped>
