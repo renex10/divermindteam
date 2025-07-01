@@ -1,14 +1,20 @@
+<!-- resources/js/Pages/Dashboard/users/Users.vue -->
 <script setup>
 import { defineProps, ref } from 'vue' 
 import DashboardLayout from '@/Layouts/DashboardLayout.vue'
 import UserTable from '@/Components/Table/UserTable.vue'
 import ButtonAdd from '@/Components/Bottom/ButtonAdd.vue'
-import BaseModal from '@/Components/Modal/BaseModal.vue'  
+import CreateUserFormModal from '@/Components/Modal/CreateUserFormModal.vue'
+import CreateEstablishmentModal from '@/Components/Modal/CreateEstablishmentModal.vue'
 
 const props = defineProps({
   users: {
     type: Array,
     required: true
+  },
+  communes: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -17,10 +23,21 @@ const isUserModalOpen = ref(false)
 const openUserModal = () => isUserModalOpen.value = true
 const closeUserModal = () => isUserModalOpen.value = false
 
-// Estado modal para crear escuela
-const isSchoolModalOpen = ref(false)
-const openSchoolModal = () => isSchoolModalOpen.value = true
-const closeSchoolModal = () => isSchoolModalOpen.value = false
+// Estado modal para crear establecimiento
+const isEstablishmentModalOpen = ref(false)
+const openEstablishmentModal = () => isEstablishmentModalOpen.value = true
+const closeEstablishmentModal = () => isEstablishmentModalOpen.value = false
+
+// Handlers para éxito
+const handleUserCreated = () => {
+  console.log('Usuario creado exitosamente')
+  // Aquí podrías mostrar una notificación o recargar la tabla
+}
+
+const handleEstablishmentCreated = () => {
+  console.log('Establecimiento creado exitosamente')
+  // Aquí podrías mostrar una notificación o recargar la tabla
+}
 </script>
 
 <template>
@@ -30,64 +47,25 @@ const closeSchoolModal = () => isSchoolModalOpen.value = false
         <h2 class="text-xl font-semibold text-gray-800">Gestión de Usuarios</h2>
         <div class="flex gap-2">
           <ButtonAdd label="Agregar Usuario" @openModal="openUserModal" />
-          <ButtonAdd label="Agregar Escuela" @openModal="openSchoolModal" />
+          <ButtonAdd label="Agregar Establecimiento" @openModal="openEstablishmentModal" />
         </div>
       </div>
     </template>
 
     <!-- Modal: Crear Usuario -->
-    <BaseModal 
-      :isOpen="isUserModalOpen" 
-      title="Crear Nuevo Usuario"
+    <CreateUserFormModal 
+      :isOpen="isUserModalOpen"
       @close="closeUserModal"
-    >
-      <div class="p-4">
-        <p>Formulario de creación de usuario irá aquí</p>
-      </div>
+      @success="handleUserCreated"
+    />
 
-      <template #footer>
-        <div class="flex justify-end space-x-3">
-          <button 
-            @click="closeUserModal"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-          >
-            Cancelar
-          </button>
-          <button 
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-          >
-            Guardar
-          </button>
-        </div>
-      </template>
-    </BaseModal>
-
-    <!-- Modal: Crear Escuela -->
-    <BaseModal 
-      :isOpen="isSchoolModalOpen" 
-      title="Crear Nueva Escuela"
-      @close="closeSchoolModal"
-    >
-      <div class="p-4">
-        <p>Formulario de creación de escuela irá aquí</p>
-      </div>
-
-      <template #footer>
-        <div class="flex justify-end space-x-3">
-          <button 
-            @click="closeSchoolModal"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
-          >
-            Cancelar
-          </button>
-          <button 
-            class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700"
-          >
-            Guardar
-          </button>
-        </div>
-      </template>
-    </BaseModal>
+    <!-- Modal: Crear Establecimiento -->
+    <CreateEstablishmentModal 
+      :isOpen="isEstablishmentModalOpen"
+      :communes="communes"
+      @close="closeEstablishmentModal"
+      @success="handleEstablishmentCreated"
+    />
 
     <!-- Tabla de usuarios -->
     <div class="py-6">

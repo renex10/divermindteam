@@ -6,6 +6,7 @@ use Inertia\Inertia;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Student\StudentController;
 use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Establishment\EstablishmentController;
 
 // Ruta de inicio CON NOMBRE 'home'
 Route::get('/', function () {
@@ -63,5 +64,10 @@ Route::middleware([
 
       // 👇 AQUI está la línea que necesitas agregar 👇
     Route::resource('users', UserController::class); 
+
+
+      Route::resource('establishments', EstablishmentController::class)->only([
+        'create', 'store'
+    ]);
 });
 
