@@ -54,6 +54,21 @@
         label-class="formkit-label"
         input-class="formkit-input"
       />
+    
+      <!-- Campo REGIÓN -->
+      <FormKit
+        type="select"
+        v-model="formData.region_id"
+        name="region_id"
+        label="Región *"
+        :options="regionOptions"
+        placeholder="Seleccione región"
+        validation="required"
+        outer-class="mb-0"
+        label-class="formkit-label"
+        input-class="formkit-input"
+        @change="handleRegionChange"
+      />
 
       <!-- Comuna -->
       <FormKit
@@ -61,59 +76,10 @@
         v-model="formData.commune_id"
         name="commune_id"
         label="Comuna *"
-        :options="communeOptions"
+        :options="filteredCommuneOptions"
         placeholder="Seleccione comuna"
         validation="required"
-        outer-class="mb-0"
-        label-class="formkit-label"
-        input-class="formkit-input"
-      />
-
-      <!-- Teléfono -->
-      <FormKit
-        type="text"
-        v-model="formData.phone"
-        name="phone"
-        label="Teléfono"
-        placeholder="+56 45 123 4567"
-        outer-class="mb-0"
-        label-class="formkit-label"
-        input-class="formkit-input"
-      />
-
-      <!-- Email -->
-      <FormKit
-        type="email"
-        v-model="formData.email"
-        name="email"
-        label="Email"
-        placeholder="contacto@establecimiento.cl"
-        validation="email"
-        outer-class="mb-0"
-        label-class="formkit-label"
-        input-class="formkit-input"
-      />
-
-      <!-- Director -->
-      <FormKit
-        type="text"
-        v-model="formData.director_name"
-        name="director_name"
-        label="Nombre del Director"
-        placeholder="Nombre completo del director"
-        outer-class="mb-0"
-        label-class="formkit-label"
-        input-class="formkit-input"
-      />
-
-      <!-- Matrícula Total -->
-      <FormKit
-        type="number"
-        v-model="formData.total_enrollment"
-        name="total_enrollment"
-        label="Matrícula Total"
-        placeholder="0"
-        min="0"
+        :disabled="!formData.region_id"
         outer-class="mb-0"
         label-class="formkit-label"
         input-class="formkit-input"
@@ -183,12 +149,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
 import BaseModal from '@/Components/Modal/BaseModal.vue';
 import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
   isOpen: Boolean,
+  regions: {
+    type: Array,
+    default: () => []
+  },
   communes: {
     type: Array,
     default: () => []
@@ -202,6 +172,12 @@ const props = defineProps({
 const emit = defineEmits(['close', 'success']);
 
 const isSubmitting = ref(false);
+
+// DEBUG: Verificar datos recibidos
+onMounted(() => {
+  console.log('Regiones recibidas en modal:', props.regions);
+  console.log('Comunas recibidas en modal:', props.communes);
+});
 
 // Opciones de tipo de establecimiento
 const establishmentTypeOptions = [
@@ -219,10 +195,33 @@ const educationLevelOptions = [
   { value: 'especial', label: 'Educación Especial' }
 ];
 
-// Opciones de comunas
-const communeOptions = computed(() => {
-  if (!props.communes || !Array.isArray(props.communes)) return [];
-  return props.communes.map(commune => ({
+// Opciones de regiones (con verificación de estructura)
+const regionOptions = computed(() => {
+  if (!props.regions || !Array.isArray(props.regions)) {
+    console.warn('Regiones no es un array válido:', props.regions);
+    return [];
+  }
+  
+  // Transformar regiones a formato para FormKit
+  return props.regions.map(region => ({
+    value: region.id,
+    label: region.name
+  }));
+});
+
+// Comunas filtradas por región seleccionada
+const filteredCommuneOptions = computed(() => {
+  if (!formData.region_id) {
+    return [];
+  }
+  
+  // Filtrar comunas por región seleccionada
+  const filtered = props.communes.filter(
+    commune => commune.region_id == formData.region_id
+  );
+  
+  // Transformar comunas a formato para FormKit
+  return filtered.map(commune => ({
     value: commune.id,
     label: commune.name
   }));
@@ -235,6 +234,7 @@ const createDefaultFormData = (initialData = {}) => {
     rbd: initialData.rbd || '',
     type: initialData.type || 'municipal',
     address: initialData.address || '',
+    region_id: initialData.region_id || null,
     commune_id: initialData.commune_id || null,
     phone: initialData.phone || '',
     email: initialData.email || '',
@@ -249,6 +249,11 @@ const createDefaultFormData = (initialData = {}) => {
 // Datos del formulario
 const formData = reactive(createDefaultFormData(props.initialData));
 
+// Manejar cambio de región
+const handleRegionChange = () => {
+  formData.commune_id = null; // Resetear comuna al cambiar región
+};
+
 // Actualizar formData cuando cambien los datos iniciales
 watch(() => props.initialData, (newData) => {
   if (newData && Object.keys(newData).length > 0) {
@@ -260,7 +265,6 @@ watch(() => props.initialData, (newData) => {
 // Limpiar formulario cuando se cierra el modal
 watch(() => props.isOpen, (isOpen) => {
   if (!isOpen) {
-    // Resetear formulario después de un pequeño delay para evitar que se vea el reset
     setTimeout(() => {
       Object.assign(formData, createDefaultFormData());
       isSubmitting.value = false;
@@ -276,14 +280,20 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
   
   try {
-    await router.post('/establishments', formData, {
+    // Preparar datos para enviar
+    const payload = {
+      ...formData,
+      education_levels: formData.education_levels
+    };
+    
+    await router.post('/establishments', payload, {
       onSuccess: () => {
         emit('success');
         closeModal();
       },
       onError: (errors) => {
         console.error('Error al crear establecimiento:', errors);
-        // Aquí podrías mostrar los errores en el formulario
+        // Manejar errores aquí
       },
       onFinish: () => {
         isSubmitting.value = false;
@@ -305,12 +315,10 @@ const handleSubmit = async () => {
   @apply mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2 px-3 border;
 }
 
-/* Estilos específicos para textarea */
 .formkit-input[type="textarea"] {
   @apply resize-y;
 }
 
-/* Estilos para select múltiple */
 .formkit-input[multiple] {
   @apply h-24;
 }
