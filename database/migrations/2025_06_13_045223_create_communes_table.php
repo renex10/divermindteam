@@ -13,10 +13,9 @@ return new class extends Migration
     {
         Schema::create('communes', function (Blueprint $table) {
             $table->id();
-          $table->string('name', 100);
-        $table->foreignId('region_id')->constrained('regions')->onDelete('restrict')->onUpdate('cascade');
-        $table->timestamps();
-
+            $table->string('name', 100);
+            $table->foreignId('region_id')->constrained('regions')->onDelete('restrict')->onUpdate('cascade');
+            $table->timestamps();
         });
     }
 

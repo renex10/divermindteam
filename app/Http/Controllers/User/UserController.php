@@ -5,21 +5,31 @@ namespace App\Http\Controllers\User;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Region;
+use App\Models\Commune;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
-    public function index()
-    {
-        // Obtiene todos los usuarios y carga sus relaciones anidadas
-        // para evitar múltiples consultas a la base de datos (problema N+1).
-        $users = User::with('establishment.commune.region')->get();
+  public function index()
+{
+    $users = User::with('establishment.commune.region')->get();
+    $regions = Region::with('country')->get();
+    $communes = Commune::with('region')->get();
+    
+    // DEBUG
+    Log::info('UserController index:', [
+        'users_count' => $users->count(),
+        'regions_count' => $regions->count(),
+        'communes_count' => $communes->count(),
+    ]);
 
-        // Le dice a Inertia que renderice el componente Vue
-        // 'Dashboard/users/Users' y le pasa la variable 'users' como prop.
-        return inertia('Dashboard/users/Users', [
-            'users' => $users,
-        ]);
-    }
+    return inertia('Dashboard/users/Users', [
+        'users' => $users,
+        'regions' => $regions,
+        'communes' => $communes,
+    ]);
+}
 
     
     public function create()

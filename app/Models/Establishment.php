@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Establishment extends Model
 {
     /** @use HasFactory<\Database\Factories\EstablishmentFactory> */
-    use HasFactory;
+    use HasFactory; // ¡Deja solo esta!
 
     public function commune(): BelongsTo
     {
@@ -49,5 +49,12 @@ class Establishment extends Model
         return $this->hasMany(Consent::class);
     }
 
+    // ¡Elimina la línea "use HasFactory;" que estaba aquí!
 
+    protected $fillable = [
+        'name',
+        'address',
+        'commune_id',
+        'pie_quota_max'
+    ];
 }

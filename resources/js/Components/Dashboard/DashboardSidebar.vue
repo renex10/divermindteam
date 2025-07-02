@@ -73,6 +73,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { 
+  BuildingOfficeIcon,
   ChevronLeftIcon,
   HomeIcon,
   UsersIcon,
@@ -117,6 +118,15 @@ const menuItems = ref([
     href: '/dashboard',
     badge: null
   },
+
+ {
+  id: 'establishments',
+  label: 'Establecimientos',
+  icon: BuildingOfficeIcon,
+  href: '/establishments',
+  badge: null
+},
+
   {
     id: 'usuarios',
     label: 'Usuarios',

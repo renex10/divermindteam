@@ -1,4 +1,4 @@
-<!-- resources/js/Pages/Dashboard/users/Users.vue -->
+// resources/js/Pages/Dashboard/users/Users.vue - SCRIPT SECTION
 <script setup>
 import { defineProps, ref } from 'vue' 
 import DashboardLayout from '@/Layouts/DashboardLayout.vue'
@@ -12,11 +12,21 @@ const props = defineProps({
     type: Array,
     required: true
   },
+  regions: {     // ✅ Agregamos regions como prop
+    type: Array,
+    default: () => []
+  },
   communes: {
     type: Array,
     default: () => []
   }
 })
+
+// DEBUG: Verificar datos recibidos
+console.log('Props recibidos en Users.vue:');
+console.log('- Users:', props.users?.length || 0);
+console.log('- Regions:', props.regions?.length || 0, props.regions);
+console.log('- Communes:', props.communes?.length || 0, props.communes);
 
 // Estado modal para crear usuario
 const isUserModalOpen = ref(false)
@@ -62,7 +72,8 @@ const handleEstablishmentCreated = () => {
     <!-- Modal: Crear Establecimiento -->
     <CreateEstablishmentModal 
       :isOpen="isEstablishmentModalOpen"
-      :communes="communes"
+      :regions="regions"    
+      :communes="communes"  
       @close="closeEstablishmentModal"
       @success="handleEstablishmentCreated"
     />

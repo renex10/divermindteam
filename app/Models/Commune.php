@@ -8,11 +8,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo; // Importa BelongsTo
 
 class Commune extends Model
 {
-    /** @use HasFactory<\Database\Factories\CommuneFactory> */
-    use HasFactory;
 
-     public function region(): BelongsTo
+     use HasFactory;
+
+    protected $fillable = ['name', 'region_id'];
+
+    public function region()
     {
         return $this->belongsTo(Region::class);
     }
+
+    public function establishments()
+    {
+        return $this->hasMany(Establishment::class);
+    }
+
+
 }
