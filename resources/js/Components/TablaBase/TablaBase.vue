@@ -141,11 +141,13 @@ export default {
     // Datos principales
     datos: {
       type: Array,
-      default: () => []
+      default: () => [],
+      validator: value => Array.isArray(value) || value === null
     },
     columnas: {
       type: Array,
-      required: true
+      required: true,
+      validator: value => Array.isArray(value) && value.every(col => typeof col.titulo === 'string')
     },
     
     // Configuración visual
@@ -175,21 +177,30 @@ export default {
     },
     itemsPorPagina: {
       type: Number,
-      default: 10
+      default: 10,
+      validator: value => value > 0
     },
     paginaActual: {
       type: Number,
-      default: 1
+      default: 1,
+      validator: value => value >= 1
     },
     totalItems: {
       type: Number,
-      default: 0
+      default: 0,
+      validator: value => value >= 0
     },
     
     // Configuración de ordenamiento
     ordenDefecto: {
       type: Object,
-      default: () => ({ campo: null, direccion: 'asc' })
+      default: () => ({ campo: null, direccion: 'asc' }),
+      validator: value => (
+        value !== null &&
+        typeof value === 'object' &&
+        (value.campo === null || typeof value.campo === 'string') &&
+        ['asc', 'desc'].includes(value.direccion)
+      )
     },
     
     // Selección de filas
@@ -216,8 +227,11 @@ export default {
         const valorA = this.obtenerValor(a, this.ordenActual.campo)
         const valorB = this.obtenerValor(b, this.ordenActual.campo)
         
-        let resultado = 0
+        // Manejo de valores nulos/undefined en la ordenación
+        if (valorA === null || valorA === undefined) return 1
+        if (valorB === null || valorB === undefined) return -1
         
+        let resultado = 0
         if (valorA < valorB) resultado = -1
         else if (valorA > valorB) resultado = 1
         
@@ -226,50 +240,126 @@ export default {
     },
     
     totalPaginas() {
-      return Math.ceil(this.totalItems / this.itemsPorPagina)
+      return Math.max(1, Math.ceil(this.totalItems / this.itemsPorPagina))
     }
   },
   
   methods: {
     obtenerValor(objeto, campo) {
-      return campo.split('.').reduce((obj, key) => obj?.[key], objeto)
+      // 1. Validaciones iniciales
+      if (objeto === null || objeto === undefined) {
+        console.warn('TablaBase: Objeto no válido', objeto)
+        return null
+      }
+      
+      if (typeof campo !== 'string' || campo.trim() === '') {
+        console.warn('TablaBase: Campo no válido', campo)
+        return null
+      }
+
+      // 2. Búsqueda segura con reducción
+      try {
+        return campo.split('.').reduce((obj, key) => {
+          if (obj === null || obj === undefined) return undefined
+          // Manejo especial para arrays
+          if (Array.isArray(obj) && !isNaN(key)) {
+            return obj[parseInt(key)]
+          }
+          return obj[key]
+        }, objeto)
+      } catch (error) {
+        console.error('TablaBase: Error al acceder a propiedad', {
+          objeto,
+          campo,
+          error
+        })
+        return null
+      }
     },
     
     formatearValor(valor, columna) {
       if (valor === null || valor === undefined) return '-'
       
+      // Permite formateadores personalizados por columna
       if (columna.formatear && typeof columna.formatear === 'function') {
-        return columna.formatear(valor)
+        try {
+          return columna.formatear(valor)
+        } catch (error) {
+          console.error('TablaBase: Error en formateador personalizado', {
+            valor,
+            columna,
+            error
+          })
+          return valor
+        }
       }
+      
+      // Formateo automático según tipo de columna
+      if (columna.tipo === 'moneda') return this.formatearMoneda(valor)
+      if (columna.tipo === 'fecha') return this.formatearFecha(valor)
+      if (columna.tipo === 'badge') return this.getBadgeText(valor)
       
       return valor
     },
     
     formatearMoneda(valor) {
       if (valor === null || valor === undefined) return '-'
-      return new Intl.NumberFormat('es-CL', {
-        style: 'currency',
-        currency: 'CLP'
-      }).format(valor)
+      try {
+        return new Intl.NumberFormat('es-CL', {
+          style: 'currency',
+          currency: 'CLP'
+        }).format(valor)
+      } catch {
+        return valor
+      }
     },
     
     formatearFecha(valor) {
       if (!valor) return '-'
-      return new Date(valor).toLocaleDateString('es-CL')
+      try {
+        return new Date(valor).toLocaleDateString('es-CL')
+      } catch {
+        return valor
+      }
     },
     
     getBadgeClass(valor) {
+      if (valor === null || valor === undefined) return 'badge-default'
+      
+      const valorStr = String(valor).toLowerCase()
       const clases = {
         'activo': 'badge-success',
         'inactivo': 'badge-danger',
         'pendiente': 'badge-warning',
         'completado': 'badge-success',
-        'cancelado': 'badge-danger'
+        'cancelado': 'badge-danger',
+        'true': 'badge-success',
+        'false': 'badge-danger'
       }
-      return clases[valor?.toString().toLowerCase()] || 'badge-default'
+      return clases[valorStr] || 'badge-default'
+    },
+    
+    getBadgeText(valor) {
+      if (valor === null || valor === undefined) return 'N/A'
+      const valorStr = String(valor).toLowerCase()
+      const textos = {
+        'activo': 'Activo',
+        'inactivo': 'Inactivo',
+        'pendiente': 'Pendiente',
+        'completado': 'Completado',
+        'cancelado': 'Cancelado',
+        'true': 'Sí',
+        'false': 'No'
+      }
+      return textos[valorStr] || valor
     },
     
     ordenar(campo) {
+      if (!this.columnas.some(col => col.campo === campo && col.sortable)) {
+        console.warn(`Intento de ordenar por campo no sortable: ${campo}`)
+        return
+      }
+      
       if (this.ordenActual.campo === campo) {
         this.ordenActual.direccion = this.ordenActual.direccion === 'asc' ? 'desc' : 'asc'
       } else {
@@ -287,13 +377,27 @@ export default {
     seleccionarFila(fila, index) {
       if (!this.seleccionable) return
       
+      // Validar que el índice esté dentro de los límites
+      if (index < 0 || index >= this.datosOrdenados.length) {
+        console.warn('Índice de fila fuera de rango', index)
+        return
+      }
+      
       this.filaSeleccionada = this.filaSeleccionada === index ? null : index
       this.$emit('fila-seleccionada', fila, index)
     },
     
     cambiarPagina(nuevaPagina) {
-      if (nuevaPagina >= 1 && nuevaPagina <= this.totalPaginas) {
-        this.$emit('cambiar-pagina', nuevaPagina)
+      const pagina = parseInt(nuevaPagina)
+      if (isNaN(pagina)) {
+        console.warn('Número de página no válido', nuevaPagina)
+        return
+      }
+      
+      if (pagina >= 1 && pagina <= this.totalPaginas) {
+        this.$emit('cambiar-pagina', pagina)
+      } else {
+        console.warn('Intento de navegar a página fuera de rango', pagina)
       }
     }
   }
