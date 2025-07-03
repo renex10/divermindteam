@@ -3,11 +3,7 @@
   <div>
     <!-- 1. SECCIÓN DE CONTROLES SUPERIORES -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-      <!-- 
-        Campo de búsqueda por nombre:
-        - v-model: Enlaza con la variable 'busqueda' para filtrado reactivo
-        - Diseño responsive: Ocupa 1/3 del ancho en pantallas medianas/grandes
-      -->
+      <!-- Campo de búsqueda por nombre -->
       <input
         v-model="busqueda"
         type="text"
@@ -17,23 +13,14 @@
 
       <!-- Contenedor para botón y filtro -->
       <div class="flex items-center space-x-4 w-full md:w-auto">
-        <!-- 
-          Botón "Agregar establecimiento":
-          - Componente reutilizable ButtonAdd
-          - @openModal: Emite evento al componente padre
-          - Estilo personalizado con fondo verde
-        -->
+        <!-- Botón para abrir modal de nuevo establecimiento -->
         <ButtonAdd 
           @openModal="$emit('openModal')"
           label="Agregar establecimiento"
           class="bg-green-600 hover:bg-green-700 active:bg-green-800 focus:border-green-800 focus:ring-green-300"
         />
 
-        <!-- 
-          Selector de región para filtrado:
-          - v-model: Enlaza con 'regionSeleccionada'
-          - Opciones generadas dinámicamente desde 'regionesUnicas'
-        -->
+        <!-- Selector de región -->
         <select
           v-model="regionSeleccionada"
           class="border border-gray-300 rounded px-4 py-2 w-full md:w-48"
@@ -55,12 +42,7 @@
       texto-vacio="No hay establecimientos que coincidan"
       texto-cargando="Cargando..."
     >
-      <!-- 
-        SLOTS PERSONALIZADOS:
-        Permiten personalizar cómo se muestran ciertas columnas
-      -->
-
-      <!-- Slot para columna Nombre: Muestra ID + Nombre -->
+      <!-- Slot para columna Nombre -->
       <template #nombre="{ fila }">
         <div class="flex items-center">
           <span class="font-mono bg-gray-100 rounded px-2 py-1 mr-2">
@@ -70,23 +52,22 @@
         </div>
       </template>
 
-      <!-- Slot para columna Estado: Muestra badge colorido -->
+      <!-- Slot para columna Estado -->
       <template #estado="{ fila }">
-        <span :class="fila.is_active ? 'badge-success' : 'badge-danger'" class="badge">
-          {{ fila.is_active ? 'Activo' : 'Inactivo' }}
-        </span>
+        <ToggleBase 
+          v-model="fila.is_active"
+          @update:modelValue="toggleEstado(fila.id, $event)"
+          :active-label="fila.is_active ? 'Activo' : 'Inactivo'"
+          class="ml-2"
+        />
       </template>
 
-      <!-- Slot para columna Acciones: Botones Editar/Inhabilitar -->
+      <!-- Slot para columna Acciones: Solo Editar -->
       <template #acciones="{ fila }">
-        <div class="flex space-x-2" v-if="fila">
-          <button @click="editarEstablecimiento(fila.id)" 
-                  class="text-blue-600 hover:text-blue-800">
-            Editar
-          </button>
-          <button @click="toggleEstado(fila.id, fila.is_active)" 
-                  :class="fila.is_active ? 'text-red-600 hover:text-red-800' : 'text-green-600 hover:text-green-800'">
-            {{ fila.is_active ? 'Inhabilitar' : 'Habilitar' }}
+        <div class="flex items-center" v-if="fila">
+          <!-- Ícono para editar establecimiento -->
+          <button @click="editarEstablecimiento(fila.id)" class="text-blue-600 hover:text-blue-800">
+            <PencilSquareIcon class="w-5 h-5" />
           </button>
         </div>
       </template>
@@ -96,27 +77,22 @@
 
 <script setup>
 /*
- * IMPORTS (Engranaje externo):
- * - Vue: Funcionalidades reactivas
- * - TablaBase: Componente reutilizable para mostrar datos tabulares
- * - ButtonAdd: Componente reutilizable de botón
- * - Inertia: Para navegación SPA y llamadas HTTP
+ * IMPORTACIONES:
+ * - Vue: funcionalidades reactivas
+ * - TablaBase: tabla reutilizable
+ * - ButtonAdd: botón personalizado
+ * - ToggleBase: interruptor de estado
+ * - Heroicons: ícono de lápiz
  */
 import { computed, ref } from 'vue'
 import TablaBase from '@/Components/TablaBase/TablaBase.vue'
 import ButtonAdd from '@/Components/Bottom/ButtonAdd.vue'
+import ToggleBase from '@/Components/Toggle/ToggleBase.vue'
 import { Inertia } from '@inertiajs/inertia'
+import { PencilSquareIcon } from '@heroicons/vue/24/outline' // Ícono para editar
 
-/*
- * 1. DEFINICIÓN DE EVENTOS:
- * - openModal: Comunica al componente padre que debe abrir el modal
- */
 const emit = defineEmits(['openModal'])
 
-/*
- * 2. PROPS (Datos de entrada):
- * - establishments: Array de establecimientos a mostrar
- */
 const props = defineProps({
   establishments: {
     type: Array,
@@ -124,90 +100,104 @@ const props = defineProps({
   }
 })
 
-/*
- * 3. REACTIVIDAD Y COMPUTADOS:
- */
-
-// Lista de establecimientos (reactiva a cambios en props)
+// Computadas
 const establecimientos = computed(() => props.establishments || [])
 
-// Definición de columnas para la tabla
 const columnas = [
-  { 
-    titulo: 'Nombre', 
-    slot: 'nombre',       // Usa slot personalizado
-    sortable: true,       // Permite ordenamiento
-    campo: 'name'         // Campo para ordenamiento
-  },
-  { 
-    titulo: 'Estado', 
-    slot: 'estado',
-    sortable: true,
-    campo: 'is_active'
-  },
+  { titulo: 'Nombre', slot: 'nombre', sortable: true, campo: 'name' },
+  { titulo: 'Estado', slot: 'estado', sortable: true, campo: 'is_active' },
   { titulo: 'Dirección', campo: 'address' },
   { titulo: 'Cupo PIE', campo: 'pie_quota_max' },
   { titulo: 'Comuna', campo: 'commune.name' },
   { titulo: 'Región', campo: 'commune.region.name' },
-  { 
-    titulo: 'Acciones', 
-    slot: 'acciones',
-    sortable: false       // No permite ordenamiento
-  }
+  { titulo: 'Acciones', slot: 'acciones', sortable: false }
 ]
 
-// Variables reactivas para filtros
-const busqueda = ref('')             // Texto de búsqueda
-const regionSeleccionada = ref('')   // Región seleccionada
-
-/*
- * 4. FILTRADO DE DATOS:
- * - establecimientosFiltrados: Combina filtros de búsqueda y región
- */
+// Filtros
+const busqueda = ref('')
+const regionSeleccionada = ref('')
+//"Filtrar dinámicamente la lista de establecimientos según el nombre ingresado
+//  en el buscador y la región seleccionada por el usuario."
 const establecimientosFiltrados = computed(() => {
+  // 1. Verificamos si 'establecimientos.value' es un arreglo válido.
+  //    Esto es una medida de seguridad para evitar errores si aún no hay datos.
   if (!Array.isArray(establecimientos.value)) return []
-  
+
+  // 2. Utilizamos el método .filter() para recorrer todos los establecimientos.
+  //    Este método devuelve un nuevo arreglo con los elementos que cumplan ciertas condiciones.
   return establecimientos.value.filter(est => {
-    // Filtro por nombre (case insensitive)
+    
+    // 3. Evaluamos si el nombre del establecimiento coincide con el texto de búsqueda:
+    //    a) Convertimos 'est.name' y 'busqueda.value' a minúsculas para hacer la comparación insensible a mayúsculas.
+    //    b) Usamos el método .includes() para ver si el texto buscado está contenido en el nombre.
+    //    c) Si 'est.name' no existe (es undefined o null), usamos el operador ?. para evitar errores.
     const coincideNombre = est.name?.toLowerCase().includes(busqueda.value.toLowerCase())
-    // Filtro por región (si hay alguna seleccionada)
+
+    // 4. Evaluamos si la región del establecimiento coincide con la región seleccionada:
+    //    a) Si 'regionSeleccionada' tiene un valor (es decir, se eligió una región),
+    //       comparamos si 'est.commune.region.name' es igual a ese valor.
+    //    b) Si NO hay región seleccionada (el valor es una cadena vacía), consideramos que cualquier región es válida (true).
     const coincideRegion = regionSeleccionada.value
       ? est.commune?.region?.name === regionSeleccionada.value
       : true
-    
+
+    // 5. Solo incluimos en el resultado los establecimientos que:
+    //    - Cumplen con el filtro de nombre (coincideNombre === true)
+    //    - Y también cumplen con el filtro de región (coincideRegion === true)
     return coincideNombre && coincideRegion
   })
 })
 
-/*
- * 5. DATOS PARA FILTRO DE REGIONES:
- * - regionesUnicas: Lista de regiones sin duplicados, ordenadas
- */
+
 const regionesUnicas = computed(() => {
   if (!Array.isArray(establecimientos.value)) return []
-  
   const regiones = establecimientos.value
-    .map(est => est.commune?.region?.name)  // Extrae nombres de regiones
-    .filter(Boolean)                        // Filtra valores nulos/undefined
-  
-  return [...new Set(regiones)].sort()      // Elimina duplicados y ordena
+    .map(est => est.commune?.region?.name)
+    .filter(Boolean)
+  return [...new Set(regiones)].sort()
 })
 
-/*
- * 6. MÉTODOS (Lógica de interacción):
- */
-
-// Navega a la página de edición de un establecimiento
+// Navega a la página de edición
 function editarEstablecimiento(id) {
   Inertia.visit(route('establishments.edit', id))
 }
 
-// Alterna el estado activo/inactivo de un establecimiento
-function toggleEstado(id, estadoActual) {
-  if (confirm(`¿Estás seguro de ${estadoActual ? 'inhabilitar' : 'habilitar'} este establecimiento?`)) {
-    Inertia.put(route('establishments.update', id), {
-      is_active: !estadoActual  // Invierte el estado actual
-    })
-  }
+// FUNCIÓN TOGGLE CORREGIDA (solo una versión)
+function toggleEstado(id, nuevoEstado) {
+  console.log('=== INICIO TOGGLE DEBUG ===');
+  console.log('ID:', id);
+  console.log('Nuevo estado:', nuevoEstado);
+  
+  // Construir URL manualmente para evitar problemas con route()
+  const url = `/establishments/${id}`;
+  console.log('URL construida manualmente:', url);
+  
+  Inertia.put(url, {
+    is_active: nuevoEstado
+  }, {
+    preserveScroll: true,
+    onStart: () => {
+      console.log('🚀 Iniciando petición PUT a:', url);
+    },
+    onSuccess: (page) => {
+      console.log('✅ Éxito:', page);
+      const index = establecimientos.value.findIndex(e => e.id === id);
+      if (index !== -1) {
+        establecimientos.value[index].is_active = nuevoEstado;
+      }
+    },
+    onError: (errors) => {
+      console.error('❌ Error en petición:', errors);
+      // Revertir visualmente si falla
+      const index = establecimientos.value.findIndex(e => e.id === id);
+      if (index !== -1) {
+        establecimientos.value[index].is_active = !nuevoEstado;
+      }
+    },
+    onFinish: () => {
+      console.log('🏁 Petición terminada');
+      console.log('=== FIN TOGGLE DEBUG ===');
+    }
+  });
 }
 </script>

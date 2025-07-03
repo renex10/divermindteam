@@ -14,6 +14,14 @@ class Establishment extends Model
     /** @use HasFactory<\Database\Factories\EstablishmentFactory> */
     use HasFactory; // ¡Deja solo esta!
 
+     protected $fillable = [
+        'name', 
+        'address', 
+        'commune_id', 
+        'pie_quota_max',
+        'is_active' // Asegúrate que este campo sea fillable
+    ];
+
     public function commune(): BelongsTo
     {
         return $this->belongsTo(Commune::class);
@@ -51,10 +59,5 @@ class Establishment extends Model
 
     // ¡Elimina la línea "use HasFactory;" que estaba aquí!
 
-    protected $fillable = [
-        'name',
-        'address',
-        'commune_id',
-        'pie_quota_max'
-    ];
+  
 }
