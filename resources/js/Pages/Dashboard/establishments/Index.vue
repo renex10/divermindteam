@@ -1,54 +1,105 @@
-// VERSIÓN CORREGIDA DEL ARCHIVO Index.vue
-// resources/js/Pages/Dashboard/establishments/Index.vue
-
 <script setup>
+/**
+ * IMPORTACIONES NECESARIAS
+ */
 import { ref, computed } from 'vue'
-import EstablishmentTable from '@/Components/Table/Establishment.vue'
-import { Inertia } from '@inertiajs/inertia'
-import { usePage } from '@inertiajs/vue3'
-import DashboardLayout from '@/Layouts/DashboardLayout.vue'
+import { usePage, router } from '@inertiajs/vue3' // <-- Importamos router para navegación Inertia en Vue 3
+// import { Inertia } from '@inertiajs/inertia' // <-- QUITADA para evitar conflicto y error "Inertia is not defined"
 
-// Usar usePage de forma más robusta
+import DashboardLayout from '@/Layouts/DashboardLayout.vue'
+import EstablishmentTable from '@/Components/Table/Establishment.vue'
+import CreateEstablishmentModal from '@/Components/Modal/CreateEstablishmentModal.vue'
+
+/**
+ * OBTENER DATOS DESDE EL OBJETO GLOBAL DE LA PÁGINA (props enviados desde el backend Laravel)
+ */
 const page = usePage()
 
-// Asegurar que los datos estén disponibles con valores por defecto
-const establishments = computed(() => {
-  return page.props.establishments?.data || []
+// 🏢 Lista de establecimientos paginados (solo el array `data`)
+const establishments = computed(() => page.props.establishments?.data || [])
+
+// 📄 Información de la paginación (actual, última página, etc.)
+const pagination = computed(() => page.props.establishments?.pagination || {
+  current_page: 1,
+  last_page: 1,
+  prev_page_url: null,
+  next_page_url: null
 })
 
-const pagination = computed(() => {
-  return page.props.establishments?.pagination || {
-    current_page: 1,
-    last_page: 1,
-    prev_page_url: null,
-    next_page_url: null
-  }
-})
+// 🌍 Listas de regiones y comunas (relacionadas a los establecimientos)
+const regiones = computed(() => page.props.regiones || [])
+const comunas = computed(() => page.props.comunas || [])
 
-// Función para cambiar página
+/**
+ * CONTROL DE ESTADO DEL MODAL
+ */
+// 🔓 Controla si el modal está abierto
+const modalAbierto = ref(false)
+
+// 🔘 Abre el modal
+function abrirModal() {
+  modalAbierto.value = true
+}
+
+// 🔒 Cierra el modal
+function cerrarModal() {
+  modalAbierto.value = false
+}
+
+/**
+ * RECARGA DE LA LISTA DESPUÉS DE GUARDAR
+ */
+// 🔁 MODIFICACIÓN IMPORTANTE:
+// Cambié Inertia.reload() por router.reload() para evitar el error "Inertia is not defined"
+// router.reload() recarga solo la parte especificada sin refrescar toda la página
+function refrescar() {
+  router.reload({ only: ['establishments'] })
+}
+
+/**
+ * FUNCIÓN PARA CAMBIAR DE PÁGINA EN LA TABLA (maneja la paginación)
+ */
+// 🔁 Cambio también Inertia.get() por router.get()
 function changePage(pageNumber) {
   if (pageNumber < 1 || pageNumber > pagination.value.last_page) return
-  
-  Inertia.get(route('establishments.index'), { 
-    page: pageNumber 
-  }, { 
-    preserveState: true, 
-    replace: true 
+
+  router.get(route('establishments.index'), {
+    page: pageNumber
+  }, {
+    preserveState: true,
+    replace: true
   })
 }
+
+// 🪵 DEBUG opcional
+console.log('Regiones disponibles:', regiones.value)
+console.log('Comunas disponibles:', comunas.value)
 </script>
 
 <template>
   <DashboardLayout>
+    <!-- 🧭 Encabezado del módulo -->
     <template #header>
       <h1 class="text-2xl font-bold">Establecimientos</h1>
     </template>
-    
+
     <div class="space-y-6">
-      <!-- Tabla que recibe establecimientos para mostrar -->
-      <EstablishmentTable :establishments="establishments" />
-      
-      <!-- Paginador mejorado -->
+      <!-- 🧾 Tabla de establecimientos con botón para abrir el modal -->
+      <EstablishmentTable 
+        :establishments="establishments" 
+        @openModal="abrirModal" 
+      />
+
+      <!-- 🆕 Modal para crear establecimiento -->
+      <CreateEstablishmentModal
+        :isOpen="modalAbierto"
+        :regiones="regiones"
+        :comunas="comunas"
+        @close="cerrarModal"
+        @saved="refrescar" 
+      />
+
+      <!-- 🔢 Controles de paginación -->
       <div class="mt-4 flex justify-center items-center space-x-4">
         <button
           class="px-4 py-2 border rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"

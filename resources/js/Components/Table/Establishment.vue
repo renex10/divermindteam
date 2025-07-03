@@ -55,8 +55,8 @@
       <!-- Slot para columna Estado -->
       <template #estado="{ fila }">
         <ToggleBase 
-          v-model="fila.is_active"
-          @update:modelValue="toggleEstado(fila.id, $event)"
+          :model-value="Boolean(fila.is_active)" 
+          @update:modelValue="nuevoEstado => toggleEstado(fila.id, nuevoEstado)"
           :active-label="fila.is_active ? 'Activo' : 'Inactivo'"
           class="ml-2"
         />
@@ -76,20 +76,12 @@
 </template>
 
 <script setup>
-/*
- * IMPORTACIONES:
- * - Vue: funcionalidades reactivas
- * - TablaBase: tabla reutilizable
- * - ButtonAdd: botón personalizado
- * - ToggleBase: interruptor de estado
- * - Heroicons: ícono de lápiz
- */
 import { computed, ref } from 'vue'
 import TablaBase from '@/Components/TablaBase/TablaBase.vue'
 import ButtonAdd from '@/Components/Bottom/ButtonAdd.vue'
 import ToggleBase from '@/Components/Toggle/ToggleBase.vue'
 import { Inertia } from '@inertiajs/inertia'
-import { PencilSquareIcon } from '@heroicons/vue/24/outline' // Ícono para editar
+import { PencilSquareIcon } from '@heroicons/vue/24/outline'
 
 const emit = defineEmits(['openModal'])
 
@@ -100,9 +92,10 @@ const props = defineProps({
   }
 })
 
-// Computadas
+// Reactivo para la lista de establecimientos
 const establecimientos = computed(() => props.establishments || [])
 
+// Columnas configuradas para TablaBase
 const columnas = [
   { titulo: 'Nombre', slot: 'nombre', sortable: true, campo: 'name' },
   { titulo: 'Estado', slot: 'estado', sortable: true, campo: 'is_active' },
@@ -113,42 +106,24 @@ const columnas = [
   { titulo: 'Acciones', slot: 'acciones', sortable: false }
 ]
 
-// Filtros
+// Filtros reactivos
 const busqueda = ref('')
 const regionSeleccionada = ref('')
-//"Filtrar dinámicamente la lista de establecimientos según el nombre ingresado
-//  en el buscador y la región seleccionada por el usuario."
+
+// Filtra establecimientos por búsqueda y región
 const establecimientosFiltrados = computed(() => {
-  // 1. Verificamos si 'establecimientos.value' es un arreglo válido.
-  //    Esto es una medida de seguridad para evitar errores si aún no hay datos.
   if (!Array.isArray(establecimientos.value)) return []
 
-  // 2. Utilizamos el método .filter() para recorrer todos los establecimientos.
-  //    Este método devuelve un nuevo arreglo con los elementos que cumplan ciertas condiciones.
   return establecimientos.value.filter(est => {
-    
-    // 3. Evaluamos si el nombre del establecimiento coincide con el texto de búsqueda:
-    //    a) Convertimos 'est.name' y 'busqueda.value' a minúsculas para hacer la comparación insensible a mayúsculas.
-    //    b) Usamos el método .includes() para ver si el texto buscado está contenido en el nombre.
-    //    c) Si 'est.name' no existe (es undefined o null), usamos el operador ?. para evitar errores.
     const coincideNombre = est.name?.toLowerCase().includes(busqueda.value.toLowerCase())
-
-    // 4. Evaluamos si la región del establecimiento coincide con la región seleccionada:
-    //    a) Si 'regionSeleccionada' tiene un valor (es decir, se eligió una región),
-    //       comparamos si 'est.commune.region.name' es igual a ese valor.
-    //    b) Si NO hay región seleccionada (el valor es una cadena vacía), consideramos que cualquier región es válida (true).
     const coincideRegion = regionSeleccionada.value
       ? est.commune?.region?.name === regionSeleccionada.value
       : true
-
-    // 5. Solo incluimos en el resultado los establecimientos que:
-    //    - Cumplen con el filtro de nombre (coincideNombre === true)
-    //    - Y también cumplen con el filtro de región (coincideRegion === true)
     return coincideNombre && coincideRegion
   })
 })
 
-
+// Regiones únicas para filtro
 const regionesUnicas = computed(() => {
   if (!Array.isArray(establecimientos.value)) return []
   const regiones = establecimientos.value
@@ -157,47 +132,42 @@ const regionesUnicas = computed(() => {
   return [...new Set(regiones)].sort()
 })
 
-// Navega a la página de edición
+// Navega a página edición
 function editarEstablecimiento(id) {
   Inertia.visit(route('establishments.edit', id))
 }
 
-// FUNCIÓN TOGGLE CORREGIDA (solo una versión)
+// Actualiza estado activo/inactivo (booleano)
 function toggleEstado(id, nuevoEstado) {
-  console.log('=== INICIO TOGGLE DEBUG ===');
-  console.log('ID:', id);
-  console.log('Nuevo estado:', nuevoEstado);
-  
-  // Construir URL manualmente para evitar problemas con route()
-  const url = `/establishments/${id}`;
-  console.log('URL construida manualmente:', url);
-  
+  // Debug console logs para seguimiento
+  console.log('=== INICIO TOGGLE DEBUG ===')
+  console.log('ID:', id)
+  console.log('Nuevo estado:', nuevoEstado)
+
+  const url = `/establishments/${id}`
+
   Inertia.put(url, {
     is_active: nuevoEstado
   }, {
     preserveScroll: true,
-    onStart: () => {
-      console.log('🚀 Iniciando petición PUT a:', url);
-    },
+    onStart: () => console.log('🚀 Petición PUT a:', url),
     onSuccess: (page) => {
-      console.log('✅ Éxito:', page);
-      const index = establecimientos.value.findIndex(e => e.id === id);
+      console.log('✅ Estado actualizado con éxito')
+      // Actualiza localmente el estado para reflejar cambio inmediato
+      const index = establecimientos.value.findIndex(e => e.id === id)
       if (index !== -1) {
-        establecimientos.value[index].is_active = nuevoEstado;
+        establecimientos.value[index].is_active = nuevoEstado
       }
     },
     onError: (errors) => {
-      console.error('❌ Error en petición:', errors);
-      // Revertir visualmente si falla
-      const index = establecimientos.value.findIndex(e => e.id === id);
+      console.error('❌ Error al actualizar estado:', errors)
+      // Opcional: revertir toggle si falla
+      const index = establecimientos.value.findIndex(e => e.id === id)
       if (index !== -1) {
-        establecimientos.value[index].is_active = !nuevoEstado;
+        establecimientos.value[index].is_active = !nuevoEstado
       }
     },
-    onFinish: () => {
-      console.log('🏁 Petición terminada');
-      console.log('=== FIN TOGGLE DEBUG ===');
-    }
-  });
+    onFinish: () => console.log('🏁 Petición finalizada\n=== FIN TOGGLE DEBUG ===')
+  })
 }
 </script>
