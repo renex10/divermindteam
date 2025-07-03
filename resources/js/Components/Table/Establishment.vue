@@ -36,17 +36,25 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { usePage } from '@inertiajs/vue3'
 import TablaBase from '@/Components/TablaBase/TablaBase.vue'
 
 /**
- * 3. Obtener datos directamente de Inertia
+ * 3. Definir las props que recibe el componente
  */
-const page = usePage()
-const establecimientos = computed(() => page.props.establishments || [])
+const props = defineProps({
+  establishments: {
+    type: Array,
+    default: () => []
+  }
+})
 
 /**
- * 4. Columnas visibles en la tabla
+ * 4. Usar las props recibidas en lugar de page.props
+ */
+const establecimientos = computed(() => props.establishments || [])
+
+/**
+ * 5. Columnas visibles en la tabla
  */
 const columnas = [
   { titulo: 'Nombre', campo: 'name', sortable: true },
@@ -57,17 +65,22 @@ const columnas = [
 ]
 
 /**
- * 5. Filtros reactivos
+ * 6. Filtros reactivos
  */
 const busqueda = ref('')
 const regionSeleccionada = ref('')
 
 /**
- * 6. Filtro computado basado en los campos seleccionados
+ * 7. Filtro computado basado en los campos seleccionados
  */
 const establecimientosFiltrados = computed(() => {
+  if (!Array.isArray(establecimientos.value)) {
+    console.warn('establecimientos no es un array:', establecimientos.value)
+    return []
+  }
+
   return establecimientos.value.filter(est => {
-    const coincideNombre = est.name.toLowerCase().includes(busqueda.value.toLowerCase())
+    const coincideNombre = est.name?.toLowerCase().includes(busqueda.value.toLowerCase())
     const coincideRegion = regionSeleccionada.value
       ? est.commune?.region?.name === regionSeleccionada.value
       : true
@@ -77,9 +90,13 @@ const establecimientosFiltrados = computed(() => {
 })
 
 /**
- * 7. Lista de regiones únicas para el filtro
+ * 8. Lista de regiones únicas para el filtro
  */
 const regionesUnicas = computed(() => {
+  if (!Array.isArray(establecimientos.value)) {
+    return []
+  }
+
   const regiones = establecimientos.value
     .map(est => est.commune?.region?.name)
     .filter(Boolean)
