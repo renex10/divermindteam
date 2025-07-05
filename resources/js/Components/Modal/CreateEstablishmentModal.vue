@@ -1,4 +1,5 @@
 <script setup>
+/* ruta de este archivo es resources\js\Components\Modal\CreateEstablishmentModal.vue */
 import BaseModal from '@/Components/Modal/BaseModal.vue'
 import { useForm } from '@inertiajs/vue3'
 import { ref, computed, watch } from 'vue'

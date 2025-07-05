@@ -1,5 +1,5 @@
 <?php
-
+/* ruta del archivo es app\Http\Controllers\Establishment\EstablishmentController.php */
 namespace App\Http\Controllers\Establishment;
 
 use App\Http\Controllers\Controller;
@@ -18,9 +18,36 @@ use Exception;
 
 class EstablishmentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $establishments = Establishment::with('commune.region')->paginate(8);
+        // 🔍 Obtener el término de búsqueda del request
+        $search = $request->get('search', '');
+        
+        // 🏗️ Construir la consulta base
+        $query = Establishment::with('commune.region')
+            ->orderBy('created_at', 'desc')
+            ->orderBy('id', 'desc');
+        
+        // 🔍 Aplicar filtros de búsqueda si hay término de búsqueda
+        if (!empty($search)) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                  ->orWhere('rbd', 'like', '%' . $search . '%')
+                  ->orWhere('address', 'like', '%' . $search . '%')
+                  // También buscar en relaciones
+                  ->orWhereHas('commune', function($q) use ($search) {
+                      $q->where('name', 'like', '%' . $search . '%');
+                  })
+                  ->orWhereHas('commune.region', function($q) use ($search) {
+                      $q->where('name', 'like', '%' . $search . '%');
+                  });
+            });
+        }
+        
+        // 📄 Paginar los resultados
+        $establishments = $query->paginate(8);
+        
+        // 🌍 Obtener regiones y comunas para los filtros
         $regions = Region::orderBy('name')->get();
         $communes = Commune::orderBy('name')->get();
 
@@ -38,6 +65,10 @@ class EstablishmentController extends Controller
             ],
             'regiones' => RegionResource::collection($regions),
             'comunas' => CommuneResource::collection($communes),
+            // 🔍 Enviar el término de búsqueda actual al frontend
+            'filters' => [
+                'search' => $search,
+            ],
         ]);
     }
 
@@ -81,29 +112,11 @@ class EstablishmentController extends Controller
                 'establishment_with_relations' => $establishment->toArray()
             ]);
 
+            // 🆕 MODIFICACIÓN: Devolver datos completos del establecimiento recién creado
             return redirect()->route('establishments.index')
                 ->with([
                     'success' => 'Establecimiento creado correctamente',
-                    'newEstablishment' => [
-                        'id' => $establishment->id,
-                        'rbd' => $establishment->rbd,
-                        'name' => $establishment->name,
-                        'address' => $establishment->address,
-                        'commune_id' => $establishment->commune_id,
-                        'pie_quota_max' => $establishment->pie_quota_max,
-                        'is_active' => $establishment->is_active,
-                        'commune' => [
-                            'id' => $establishment->commune->id,
-                            'name' => $establishment->commune->name,
-                            'region_id' => $establishment->commune->region_id,
-                            'region' => [
-                                'id' => $establishment->commune->region->id,
-                                'name' => $establishment->commune->region->name
-                            ]
-                        ],
-                        'created_at' => $establishment->created_at->toISOString(),
-                        'updated_at' => $establishment->updated_at->toISOString()
-                    ]
+                    'newEstablishment' => new EstablishmentResource($establishment) // Usar el Resource para consistencia
                 ]);
 
         } catch (ValidationException $ve) {

@@ -95,28 +95,72 @@ const handleResize = () => {
     screenWidth.value = window.innerWidth;
 };
 
-// Lifecycle
+// Lifecycle - SOLUCIÓN MEJORADA para el preloader
 onMounted(() => {
-    // Mostrar preloader al iniciar navegación
-    router.on('start', () => {
+    // 🎯 PRELOADER INTELIGENTE: Solo mostrar en navegaciones importantes
+    router.on('start', (event) => {
         // Limpiar timeout si existe
         if (loaderTimeout) clearTimeout(loaderTimeout);
         
-        isLoading.value = true;
-        showLoader.value = true;
+        // 🚫 NO mostrar preloader en estas situaciones:
+        const shouldSkipLoader = (
+            // 1. Navegaciones que preservan estado (búsquedas, filtros)
+            event.detail.visit.preserveState ||
+            
+            // 2. Navegaciones que solo actualizan ciertos componentes
+            (event.detail.visit.only && event.detail.visit.only.length > 0) ||
+            
+            // 3. Navegaciones que preservan scroll (generalmente filtros/búsquedas)
+            event.detail.visit.preserveScroll ||
+            
+            // 4. Navegaciones con method GET que incluyen parámetros de búsqueda
+            (event.detail.visit.method === 'get' && 
+             event.detail.visit.url.includes('search=')) ||
+            
+            // 5. Navegaciones con method GET que incluyen parámetros de filtro
+            (event.detail.visit.method === 'get' && 
+             event.detail.visit.url.includes('filter=')) ||
+            
+            // 6. Navegaciones que son del mismo componente (refrescos de datos)
+            (event.detail.visit.url === window.location.pathname + window.location.search)
+        );
+        
+        // Solo mostrar preloader si NO es una de las situaciones excluidas
+        if (!shouldSkipLoader) {
+            console.log('🔄 Mostrando preloader para navegación:', event.detail.visit.url);
+            isLoading.value = true;
+            showLoader.value = true;
+        } else {
+            console.log('⚡ Navegación rápida, omitiendo preloader:', event.detail.visit.url);
+        }
     });
 
     // Ocultar preloader al completar navegación
-    router.on('finish', () => {
-        // Establecer un tiempo mínimo de visualización del preloader (500ms)
-        loaderTimeout = setTimeout(() => {
-            showLoader.value = false; // Inicia la animación de salida
-            
-            // Después de la animación, ocultar completamente
-            setTimeout(() => {
-                isLoading.value = false;
-            }, 300); // Tiempo que dura la animación de salida
-        }, 500); // Tiempo mínimo que se mostrará el preloader
+    router.on('finish', (event) => {
+        // Solo procesar si el preloader estaba visible
+        if (isLoading.value && showLoader.value) {
+            // Establecer un tiempo mínimo de visualización del preloader (300ms)
+            loaderTimeout = setTimeout(() => {
+                showLoader.value = false; // Inicia la animación de salida
+                
+                // Después de la animación, ocultar completamente
+                setTimeout(() => {
+                    isLoading.value = false;
+                }, 300); // Tiempo que dura la animación de salida
+            }, 300); // Tiempo mínimo reducido para mejor UX
+        } else {
+            // Asegurar que el preloader esté oculto
+            isLoading.value = false;
+            showLoader.value = false;
+        }
+    });
+
+    // Manejar errores de navegación
+    router.on('error', () => {
+        // Ocultar preloader inmediatamente en caso de error
+        if (loaderTimeout) clearTimeout(loaderTimeout);
+        showLoader.value = false;
+        isLoading.value = false;
     });
 
     if (typeof window !== 'undefined') {

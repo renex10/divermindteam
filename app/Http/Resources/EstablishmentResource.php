@@ -1,4 +1,5 @@
 <?php
+/* ruta del archivo es app\Http\Resources\EstablishmentResource.php */
 
 namespace App\Http\Resources;
 
