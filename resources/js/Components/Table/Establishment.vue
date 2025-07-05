@@ -1,4 +1,5 @@
 <template>
+<!--   resources\js\Components\Table\Establishment.vue -->
   <!-- Contenedor principal del componente -->
   <div>
     <!-- 1. SECCIÓN DE CONTROLES SUPERIORES -->

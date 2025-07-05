@@ -1,4 +1,5 @@
 <template>
+<!--   resources\js\Components\TablaBase\TablaBase.vue -->
   <div class="tabla-container">
     <!-- Título y acciones opcionales -->
     <div v-if="titulo || $slots.acciones" class="tabla-header">

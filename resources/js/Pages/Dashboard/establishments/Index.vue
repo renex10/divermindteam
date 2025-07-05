@@ -1,4 +1,5 @@
 <script setup>
+/* resources\js\Pages\Dashboard\establishments\Index.vue */
 /**
  * IMPORTACIONES NECESARIAS
  */
