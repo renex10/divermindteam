@@ -4,22 +4,21 @@
  * IMPORTACIONES NECESARIAS
  */
 import { ref, computed } from 'vue'
-import { usePage, router } from '@inertiajs/vue3' // <-- Importamos router para navegación Inertia en Vue 3
-// import { Inertia } from '@inertiajs/inertia' // <-- QUITADA para evitar conflicto y error "Inertia is not defined"
+import { usePage, router } from '@inertiajs/vue3'
 
 import DashboardLayout from '@/Layouts/DashboardLayout.vue'
 import EstablishmentTable from '@/Components/Table/Establishment.vue'
 import CreateEstablishmentModal from '@/Components/Modal/CreateEstablishmentModal.vue'
 
 /**
- * OBTENER DATOS DESDE EL OBJETO GLOBAL DE LA PÁGINA (props enviados desde el backend Laravel)
+ * OBTENER DATOS DESDE EL OBJETO GLOBAL DE LA PÁGINA
  */
 const page = usePage()
 
-// 🏢 Lista de establecimientos paginados (solo el array `data`)
-const establishments = computed(() => page.props.establishments?.data || [])
+// 🏢 MODIFICACIÓN: Crear ref reactivo para manejar establecimientos localmente
+const establishments = ref([...(page.props.establishments?.data || [])])
 
-// 📄 Información de la paginación (actual, última página, etc.)
+// 📄 Información de la paginación
 const pagination = computed(() => page.props.establishments?.pagination || {
   current_page: 1,
   last_page: 1,
@@ -27,40 +26,64 @@ const pagination = computed(() => page.props.establishments?.pagination || {
   next_page_url: null
 })
 
-// 🌍 Listas de regiones y comunas (relacionadas a los establecimientos)
+// 🌍 Listas de regiones y comunas
 const regiones = computed(() => page.props.regiones || [])
 const comunas = computed(() => page.props.comunas || [])
 
 /**
  * CONTROL DE ESTADO DEL MODAL
  */
-// 🔓 Controla si el modal está abierto
 const modalAbierto = ref(false)
 
-// 🔘 Abre el modal
 function abrirModal() {
   modalAbierto.value = true
 }
 
-// 🔒 Cierra el modal
 function cerrarModal() {
   modalAbierto.value = false
 }
 
 /**
- * RECARGA DE LA LISTA DESPUÉS DE GUARDAR
+ * 🆕 NUEVA FUNCIÓN: Agregar establecimiento optimista
  */
-// 🔁 MODIFICACIÓN IMPORTANTE:
-// Cambié Inertia.reload() por router.reload() para evitar el error "Inertia is not defined"
-// router.reload() recarga solo la parte especificada sin refrescar toda la página
+function agregarEstablecimiento(nuevoEstablecimiento) {
+  console.log('✨ Agregando establecimiento optimista:', nuevoEstablecimiento)
+  
+  // Agregar al inicio de la lista para que aparezca primero
+  establishments.value.unshift(nuevoEstablecimiento)
+  
+  // Opcional: Recargar desde el servidor para sincronizar
+  setTimeout(() => {
+    router.reload({ only: ['establishments'] })
+  }, 100)
+}
+
+/**
+ * 🆕 NUEVA FUNCIÓN: Actualizar establecimiento optimista
+ */
+function actualizarEstablecimiento(id, datosActualizados) {
+  console.log('🔄 Actualizando establecimiento optimista:', id, datosActualizados)
+  
+  const index = establishments.value.findIndex(e => e.id === id)
+  if (index !== -1) {
+    // Actualizar solo los campos que cambiaron
+    establishments.value[index] = { 
+      ...establishments.value[index], 
+      ...datosActualizados 
+    }
+  }
+}
+
+/**
+ * RECARGA DE LA LISTA (fallback si es necesario)
+ */
 function refrescar() {
   router.reload({ only: ['establishments'] })
 }
 
 /**
- * FUNCIÓN PARA CAMBIAR DE PÁGINA EN LA TABLA (maneja la paginación)
+ * FUNCIÓN PARA CAMBIAR DE PÁGINA
  */
-// 🔁 Cambio también Inertia.get() por router.get()
 function changePage(pageNumber) {
   if (pageNumber < 1 || pageNumber > pagination.value.last_page) return
 
@@ -68,13 +91,18 @@ function changePage(pageNumber) {
     page: pageNumber
   }, {
     preserveState: true,
-    replace: true
+    replace: true,
+    onSuccess: (page) => {
+      // Actualizar la lista local con los nuevos datos
+      establishments.value = page.props.establishments?.data || []
+    }
   })
 }
 
-// 🪵 DEBUG opcional
-console.log('Regiones disponibles:', regiones.value)
-console.log('Comunas disponibles:', comunas.value)
+// 🪵 DEBUG
+console.log('🏗️ Establecimientos iniciales:', establishments.value)
+console.log('📋 Regiones disponibles:', regiones.value)
+console.log('🏘️ Comunas disponibles:', comunas.value)
 </script>
 
 <template>
@@ -85,10 +113,11 @@ console.log('Comunas disponibles:', comunas.value)
     </template>
 
     <div class="space-y-6">
-      <!-- 🧾 Tabla de establecimientos con botón para abrir el modal -->
+      <!-- 🧾 Tabla de establecimientos -->
       <EstablishmentTable 
         :establishments="establishments" 
-        @openModal="abrirModal" 
+        @openModal="abrirModal"
+        @establecimiento-actualizado="actualizarEstablecimiento"
       />
 
       <!-- 🆕 Modal para crear establecimiento -->
@@ -97,7 +126,7 @@ console.log('Comunas disponibles:', comunas.value)
         :regiones="regiones"
         :comunas="comunas"
         @close="cerrarModal"
-        @saved="refrescar" 
+        @saved="agregarEstablecimiento"
       />
 
       <!-- 🔢 Controles de paginación -->

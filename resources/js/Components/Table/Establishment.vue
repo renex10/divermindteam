@@ -77,14 +77,16 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+// CORRECCIÓN: Importar watch desde Vue
+import { computed, ref, watch } from 'vue'
 import TablaBase from '@/Components/TablaBase/TablaBase.vue'
 import ButtonAdd from '@/Components/Bottom/ButtonAdd.vue'
 import ToggleBase from '@/Components/Toggle/ToggleBase.vue'
-import { Inertia } from '@inertiajs/inertia'
+import { router } from '@inertiajs/vue3'
 import { PencilSquareIcon } from '@heroicons/vue/24/outline'
 
-const emit = defineEmits(['openModal'])
+// 🆕 MODIFICACIÓN: Agregar nuevo evento para comunicar cambios al padre
+const emit = defineEmits(['openModal', 'establecimiento-actualizado'])
 
 const props = defineProps({
   establishments: {
@@ -93,8 +95,13 @@ const props = defineProps({
   }
 })
 
-// Reactivo para la lista de establecimientos
-const establecimientos = computed(() => props.establishments || [])
+// 🔄 MODIFICACIÓN: Usar ref para manejar establecimientos localmente
+const establecimientos = ref([...(props.establishments || [])])
+
+// 👁️‍🗨️ Observar cambios en props para sincronizar (CORREGIDO: ahora watch está importado)
+watch(() => props.establishments, (newEstablishments) => {
+  establecimientos.value = [...(newEstablishments || [])]
+}, { immediate: true })
 
 // Columnas configuradas para TablaBase
 const columnas = [
@@ -135,40 +142,72 @@ const regionesUnicas = computed(() => {
 
 // Navega a página edición
 function editarEstablecimiento(id) {
-  Inertia.visit(route('establishments.edit', id))
+  router.visit(route('establishments.edit', id))
 }
 
-// Actualiza estado activo/inactivo (booleano)
+// 🔄 MODIFICACIÓN CRÍTICA: Actualización optimista del estado
 function toggleEstado(id, nuevoEstado) {
-  // Debug console logs para seguimiento
-  console.log('=== INICIO TOGGLE DEBUG ===')
+  console.log('=== INICIO TOGGLE OPTIMISTA ===')
   console.log('ID:', id)
   console.log('Nuevo estado:', nuevoEstado)
+  console.log('Estado actual de la lista:', establecimientos.value.find(e => e.id === id)?.is_active)
 
+  // 1. 🚀 ACTUALIZACIÓN OPTIMISTA INMEDIATA
+  const index = establecimientos.value.findIndex(e => e.id === id)
+  if (index !== -1) {
+    // Actualizar inmediatamente en la UI
+    establecimientos.value[index].is_active = nuevoEstado
+    console.log('✅ Estado actualizado optimistamente')
+    
+    // Emitir al padre para que también actualice su estado
+    emit('establecimiento-actualizado', id, { is_active: nuevoEstado })
+  }
+
+  // 2. 🌐 LLAMADA AL SERVIDOR (con manejo de errores)
   const url = `/establishments/${id}`
-
-  Inertia.put(url, {
+  
+  router.put(url, {
     is_active: nuevoEstado
   }, {
     preserveScroll: true,
-    onStart: () => console.log('🚀 Petición PUT a:', url),
+    onStart: () => {
+      console.log('🚀 Petición PUT iniciada a:', url)
+    },
     onSuccess: (page) => {
-      console.log('✅ Estado actualizado con éxito')
-      // Actualiza localmente el estado para reflejar cambio inmediato
-      const index = establecimientos.value.findIndex(e => e.id === id)
-      if (index !== -1) {
-        establecimientos.value[index].is_active = nuevoEstado
+      console.log('✅ Confirmación del servidor recibida')
+      
+      // 3. 🔄 SINCRONIZACIÓN OPCIONAL CON SERVIDOR
+      // Solo si hay discrepancias, actualizar desde la respuesta
+      if (page.props.updatedData) {
+        const serverData = page.props.updatedData
+        const localIndex = establecimientos.value.findIndex(e => e.id === serverData.id)
+        if (localIndex !== -1 && establecimientos.value[localIndex].is_active !== serverData.is_active) {
+          console.log('🔄 Sincronizando con datos del servidor')
+          establecimientos.value[localIndex].is_active = serverData.is_active
+        }
       }
     },
     onError: (errors) => {
       console.error('❌ Error al actualizar estado:', errors)
-      // Opcional: revertir toggle si falla
-      const index = establecimientos.value.findIndex(e => e.id === id)
-      if (index !== -1) {
-        establecimientos.value[index].is_active = !nuevoEstado
+      
+      // 4. 🔙 REVERTIR CAMBIO OPTIMISTA EN CASO DE ERROR
+      const revertIndex = establecimientos.value.findIndex(e => e.id === id)
+      if (revertIndex !== -1) {
+        const estadoRevertido = !nuevoEstado
+        establecimientos.value[revertIndex].is_active = estadoRevertido
+        console.log('🔙 Estado revertido por error:', estadoRevertido)
+        
+        // Emitir reversión al padre
+        emit('establecimiento-actualizado', id, { is_active: estadoRevertido })
       }
+      
+      // Mostrar notificación de error (opcional)
+      alert('Error al actualizar el estado. Por favor, intenta nuevamente.')
     },
-    onFinish: () => console.log('🏁 Petición finalizada\n=== FIN TOGGLE DEBUG ===')
+    onFinish: () => {
+      console.log('🏁 Petición finalizada')
+      console.log('=== FIN TOGGLE OPTIMISTA ===')
+    }
   })
 }
 </script>
