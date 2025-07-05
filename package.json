@@ -29,6 +29,7 @@
         "@inertiajs/inertia-vue3": "^0.6.0",
         "date-fns": "^4.1.0",
         "gsap": "^3.13.0",
-        "typed.js": "^2.1.0"
+        "typed.js": "^2.1.0",
+        "vue-toast-notification": "^3.1.3"
     }
 }

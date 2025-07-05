@@ -1,9 +1,13 @@
 <script setup>
 import BaseModal from '@/Components/Modal/BaseModal.vue'
 import { useForm } from '@inertiajs/vue3'
-
 import { ref, computed, watch } from 'vue'
 import { FormKit } from '@formkit/vue'
+// Importar el hook de toast
+import { useToast } from 'vue-toast-notification'
+import 'vue-toast-notification/dist/theme-bootstrap.css' // Asegúrate de importar el tema
+
+const $toast = useToast() // Inicializar
 
 const props = defineProps({
   isOpen: Boolean,
@@ -11,7 +15,6 @@ const props = defineProps({
   comunas: Array
 })
 
-// 🆕 MODIFICACIÓN: El evento `saved` ahora enviará el objeto completo del establecimiento
 const emit = defineEmits(['close', 'saved'])
 
 const form = useForm({
@@ -23,13 +26,11 @@ const form = useForm({
   is_active: true,
 })
 
-// 🔁 Computada: Filtrar comunas según región seleccionada
 const comunasFiltradas = computed(() => {
   if (!form.region_id) return []
   return props.comunas.filter(c => c.region_id === form.region_id)
 })
 
-// 🔍 Computada: Obtener información completa de región y comuna seleccionadas
 const regionSeleccionada = computed(() => {
   return props.regiones.find(r => r.id === form.region_id)
 })
@@ -38,7 +39,6 @@ const comunaSeleccionada = computed(() => {
   return props.comunas.find(c => c.id === form.commune_id)
 })
 
-// 👁️‍🗨️ Observador: reiniciar comuna al cambiar región
 watch(() => form.region_id, (val) => {
   console.log('🔁 Región seleccionada:', val)
   form.commune_id = '' // Evita enviar comuna vieja
@@ -51,22 +51,28 @@ watch(() => form.commune_id, (val) => {
 const submit = () => {
   console.log('📤 Enviando form:', form.data())
 
+  // Validación en el cliente antes de enviar
+  if (!form.name || !form.address || !form.region_id || !form.commune_id || form.pie_quota_max === null) {
+    $toast.error('Por favor, completa todos los campos obligatorios', {
+      position: 'top-right',
+      duration: 5000
+    })
+    return
+  }
+
   form.post(route('establishments.store'), {
     onSuccess: (page) => {
       console.log('✅ Establecimiento creado exitosamente')
       console.log('📄 Respuesta del servidor:', page)
       
-      // 🆕 MODIFICACIÓN CRÍTICA: Crear objeto completo para actualización optimista
       const nuevoEstablecimiento = {
-        // Generar ID temporal (será reemplazado por el real del servidor)
-        id: Date.now(), // Temporal hasta que llegue la respuesta del servidor
+        id: Date.now(), 
         name: form.name,
         address: form.address,
         region_id: form.region_id,
         commune_id: form.commune_id,
         pie_quota_max: form.pie_quota_max,
         is_active: form.is_active,
-        // Agregar información de relaciones para mostrar en la tabla
         commune: {
           id: form.commune_id,
           name: comunaSeleccionada.value?.name || 'Comuna no encontrada',
@@ -76,21 +82,20 @@ const submit = () => {
             name: regionSeleccionada.value?.name || 'Región no encontrada'
           }
         },
-        // Timestamps opcionales
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       }
       
       console.log('🏗️ Establecimiento para actualización optimista:', nuevoEstablecimiento)
       
-      // ✅ Emitir el establecimiento completo al padre
       emit('saved', nuevoEstablecimiento)
-      
-      // ✅ Cerrar modal
       emit('close')
-      
-      // ✅ Limpiar formulario
       form.reset()
+
+      // Mostrar toast de éxito
+      $toast.success('Establecimiento creado con éxito!', {
+        position: 'top-right'
+      })
     },
     onError: (errors) => {
       console.error('❌ Errores al guardar:', errors)
@@ -100,6 +105,19 @@ const submit = () => {
         hasErrors: form.hasErrors,
         processing: form.processing
       })
+      
+      // Mostrar toast con errores del servidor
+      let errorMessage = 'Error al guardar: '
+      if (typeof errors === 'object') {
+        errorMessage += Object.values(errors).join(', ')
+      } else {
+        errorMessage += errors
+      }
+      
+      $toast.error(errorMessage, {
+        position: 'top-right',
+        duration: 8000
+      })
     },
     onFinish: () => {
       console.log('🏁 Proceso de guardado terminado')
@@ -107,7 +125,6 @@ const submit = () => {
   })
 }
 
-// 🔄 Función para limpiar formulario cuando se cierra el modal
 function handleClose() {
   form.reset()
   form.clearErrors()
