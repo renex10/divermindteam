@@ -18,6 +18,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'saved'])
 
 const form = useForm({
+   rbd: '',
   name: '',
   address: '',
   region_id: '',
@@ -68,6 +69,8 @@ const submit = () => {
       const nuevoEstablecimiento = {
         id: Date.now(), 
         name: form.name,
+        rbd: form.rbd,
+
         address: form.address,
         region_id: form.region_id,
         commune_id: form.commune_id,
@@ -148,6 +151,18 @@ function handleClose() {
           :errors="form.errors.name ? [form.errors.name] : []"
           help="Ingresa el nombre completo del establecimiento"
         />
+
+        <!-- 🆕 RBD -->
+<FormKit 
+  type="number" 
+  label="RBD (Rol Base de Datos)" 
+  v-model="form.rbd" 
+  name="rbd" 
+  validation="required|number|min:1000|max:999999" 
+  :errors="form.errors.rbd ? [form.errors.rbd] : []" 
+  help="Código oficial asignado por el Ministerio de Educación" 
+  step="1" 
+/>
         
         <!-- 📍 Dirección -->
         <FormKit 

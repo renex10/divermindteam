@@ -1,5 +1,4 @@
 <?php
-// app/Http/Controllers/Establishment/EstablishmentController.php
 
 namespace App\Http\Controllers\Establishment;
 
@@ -19,12 +18,6 @@ use Exception;
 
 class EstablishmentController extends Controller
 {
-    /**
-     * 1. Mostrar listado paginado de establecimientos junto con
-     *    las regiones y comunas disponibles para los filtros y el modal.
-     *
-     * @return \Inertia\Response
-     */
     public function index()
     {
         $establishments = Establishment::with('commune.region')->paginate(8);
@@ -48,50 +41,54 @@ class EstablishmentController extends Controller
         ]);
     }
 
-    /**
-     * 2. Guardar un nuevo establecimiento en la base de datos.
-     * 
-     * 🆕 MODIFICACIÓN: Retornar el establecimiento creado con sus relaciones
-     * para facilitar la actualización optimista en el frontend.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     *
-     * @throws \Illuminate\Validation\ValidationException
-     */
     public function store(Request $request)
     {
         try {
             $validated = $request->validate([
+                'rbd' => ['required', 'integer', 'unique:establishments,rbd'],
                 'name' => 'required|string|max:255',
                 'address' => 'required|string|max:500',
-                'region_id' => ['required', 'integer', Rule::exists('regions', 'id')],
+                'region_id' => ['required', 'integer', Rule::exists('regions', 'id')], // Solo para validación
                 'commune_id' => ['required', 'integer', Rule::exists('communes', 'id')],
                 'pie_quota_max' => 'required|integer|min:0',
                 'is_active' => 'required|boolean',
             ]);
 
-            // Crear el establecimiento con los datos validados
-            $establishment = Establishment::create($validated);
-            
-            // 🆕 MODIFICACIÓN CRÍTICA: Cargar relaciones para enviar al frontend
+            // Verificar que la comuna pertenece a la región seleccionada
+            $commune = Commune::find($validated['commune_id']);
+            if ($commune->region_id != $validated['region_id']) {
+                throw ValidationException::withMessages([
+                    'commune_id' => 'La comuna seleccionada no pertenece a la región especificada.'
+                ]);
+            }
+
+            // Remover region_id de los datos a insertar
+            $dataToInsert = [
+                'rbd' => $validated['rbd'],
+                'name' => $validated['name'],
+                'address' => $validated['address'],
+                'commune_id' => $validated['commune_id'],
+                'pie_quota_max' => $validated['pie_quota_max'],
+                'is_active' => $validated['is_active'],
+            ];
+
+            $establishment = Establishment::create($dataToInsert);
             $establishment->load(['commune.region']);
 
             Log::info('Establecimiento creado con éxito', [
                 'id' => $establishment->id,
-                'datos' => $validated,
+                'datos' => $dataToInsert,
                 'establishment_with_relations' => $establishment->toArray()
             ]);
 
-            // 🆕 MODIFICACIÓN: Retornar datos estructurados para actualización optimista
             return redirect()->route('establishments.index')
                 ->with([
                     'success' => 'Establecimiento creado correctamente',
                     'newEstablishment' => [
                         'id' => $establishment->id,
+                        'rbd' => $establishment->rbd,
                         'name' => $establishment->name,
                         'address' => $establishment->address,
-                        'region_id' => $establishment->region_id,
                         'commune_id' => $establishment->commune_id,
                         'pie_quota_max' => $establishment->pie_quota_max,
                         'is_active' => $establishment->is_active,
@@ -126,13 +123,6 @@ class EstablishmentController extends Controller
         }
     }
 
-    /**
-     * 3. Actualizar el estado activo/inactivo de un establecimiento.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Establishment  $establishment
-     * @return \Illuminate\Http\RedirectResponse
-     */
     public function update(Request $request, Establishment $establishment)
     {
         Log::info('=== UPDATE METHOD CALLED ===', [

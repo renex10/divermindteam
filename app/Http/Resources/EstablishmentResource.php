@@ -17,7 +17,7 @@ class EstablishmentResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'address' => $this->address,
+            'rbd' => $this->rbd,
             'pie_quota_max' => $this->pie_quota_max,
             'is_active' => $this->is_active,
             'commune' => [

@@ -14,14 +14,15 @@ class Establishment extends Model
     /** @use HasFactory<\Database\Factories\EstablishmentFactory> */
     use HasFactory; // ¡Deja solo esta!
 
-     protected $fillable = [
-        'name', 
-        'address', 
-        'commune_id', 
-        'pie_quota_max',
-        'is_active' // Asegúrate que este campo sea fillable
-    ];
-
+protected $fillable = [
+    'rbd',
+    'name',
+    'address',
+    'region_id',
+    'commune_id',
+    'pie_quota_max',
+    'is_active',
+];
     public function commune(): BelongsTo
     {
         return $this->belongsTo(Commune::class);

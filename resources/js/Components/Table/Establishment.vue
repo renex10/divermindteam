@@ -4,11 +4,11 @@
   <div>
     <!-- 1. SECCIÓN DE CONTROLES SUPERIORES -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-      <!-- Campo de búsqueda por nombre -->
+      <!-- Campo de búsqueda por nombre y RBD -->
       <input
         v-model="busqueda"
         type="text"
-        placeholder="Buscar por nombre..."
+        placeholder="Buscar por nombre o RBD..."
         class="border border-gray-300 rounded px-4 py-2 w-full md:w-1/3"
       />
 
@@ -50,6 +50,15 @@
             #{{ fila.id }}
           </span>
           <span>{{ fila.name }}</span>
+        </div>
+      </template>
+
+      <!-- Slot para columna RBD -->
+      <template #rbd="{ fila }">
+        <div class="flex items-center">
+          <span class="font-mono bg-blue-100 text-blue-800 rounded px-2 py-1 font-semibold">
+            {{ fila.rbd }}
+          </span>
         </div>
       </template>
 
@@ -103,11 +112,11 @@ watch(() => props.establishments, (newEstablishments) => {
   establecimientos.value = [...(newEstablishments || [])]
 }, { immediate: true })
 
-// Columnas configuradas para TablaBase
+// Columnas configuradas para TablaBase - CAMBIO: Dirección por RBD
 const columnas = [
   { titulo: 'Nombre', slot: 'nombre', sortable: true, campo: 'name' },
+  { titulo: 'RBD', slot: 'rbd', sortable: true, campo: 'rbd' },
   { titulo: 'Estado', slot: 'estado', sortable: true, campo: 'is_active' },
-  { titulo: 'Dirección', campo: 'address' },
   { titulo: 'Cupo PIE', campo: 'pie_quota_max' },
   { titulo: 'Comuna', campo: 'commune.name' },
   { titulo: 'Región', campo: 'commune.region.name' },
@@ -118,16 +127,22 @@ const columnas = [
 const busqueda = ref('')
 const regionSeleccionada = ref('')
 
-// Filtra establecimientos por búsqueda y región
+// Filtra establecimientos por búsqueda (nombre y RBD) y región
 const establecimientosFiltrados = computed(() => {
   if (!Array.isArray(establecimientos.value)) return []
 
   return establecimientos.value.filter(est => {
+    // Búsqueda por nombre O RBD
     const coincideNombre = est.name?.toLowerCase().includes(busqueda.value.toLowerCase())
+    const coincideRBD = est.rbd?.toString().includes(busqueda.value)
+    const coincideBusqueda = coincideNombre || coincideRBD
+    
+    // Filtro por región
     const coincideRegion = regionSeleccionada.value
       ? est.commune?.region?.name === regionSeleccionada.value
       : true
-    return coincideNombre && coincideRegion
+    
+    return coincideBusqueda && coincideRegion
   })
 })
 
