@@ -82,7 +82,8 @@ import {
   DocumentTextIcon,
   ShoppingBagIcon,
   BellIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  WrenchScrewdriverIcon
 } from '@heroicons/vue/24/outline'
 import SidebarItem from './SidebarItem.vue'
 
@@ -162,6 +163,21 @@ const menuItems = ref([
     href: '/estudiantes',
     badge: { text: '12', color: 'bg-blue-600' }
   },
+
+/*   gestion para diversos datos */
+
+{
+  id: 'gestion',
+  label: 'Gestión',
+  icon: WrenchScrewdriverIcon,
+  children: [
+    {
+      id: 'gestion.specialties',
+      label: 'Especialidad',
+      href: '/specialties' // Ruta correcta según tu controlador
+    }
+  ]
+},
   {
     id: 'analytics',
     label: 'Analíticas',

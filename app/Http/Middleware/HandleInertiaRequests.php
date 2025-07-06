@@ -37,7 +37,11 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            //
+                    // Compartir el usuario autenticado con el frontend
+        'auth.user' => fn () => $request->user()
+            ? $request->user()->only('id', 'name', 'email')
+            : null,
+
         ];
     }
 }

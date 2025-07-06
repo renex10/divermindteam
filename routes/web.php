@@ -7,6 +7,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Student\StudentController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Establishment\EstablishmentController;
+use App\Http\Controllers\Specialties\SpecialtiesController;
 
 // Ruta de inicio CON NOMBRE 'home'
 Route::get('/', function () {
@@ -66,6 +67,7 @@ Route::middleware([
     Route::resource('users', UserController::class); 
 
 Route::resource('establishments', EstablishmentController::class);
+Route::resource('specialties', SpecialtiesController::class);
 
 });
 
