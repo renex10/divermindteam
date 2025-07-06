@@ -1,5 +1,4 @@
 <?php
-/* ruta del archivo es app\Http\Controllers\Establishment\EstablishmentController.php */
 namespace App\Http\Controllers\Establishment;
 
 use App\Http\Controllers\Controller;
@@ -15,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Exception;
+use App\Http\Requests\Establishment\UpdateEstablishmentRequest;
 
 class EstablishmentController extends Controller
 {
@@ -34,7 +34,6 @@ class EstablishmentController extends Controller
                 $q->where('name', 'like', '%' . $search . '%')
                   ->orWhere('rbd', 'like', '%' . $search . '%')
                   ->orWhere('address', 'like', '%' . $search . '%')
-                  // También buscar en relaciones
                   ->orWhereHas('commune', function($q) use ($search) {
                       $q->where('name', 'like', '%' . $search . '%');
                   })
@@ -65,106 +64,148 @@ class EstablishmentController extends Controller
             ],
             'regiones' => RegionResource::collection($regions),
             'comunas' => CommuneResource::collection($communes),
-            // 🔍 Enviar el término de búsqueda actual al frontend
             'filters' => [
                 'search' => $search,
             ],
         ]);
     }
 
-    public function store(Request $request)
+    public function update(UpdateEstablishmentRequest $request, Establishment $establishment)
     {
         try {
-            $validated = $request->validate([
-                'rbd' => ['required', 'integer', 'unique:establishments,rbd'],
-                'name' => 'required|string|max:255',
-                'address' => 'required|string|max:500',
-                'region_id' => ['required', 'integer', Rule::exists('regions', 'id')], // Solo para validación
-                'commune_id' => ['required', 'integer', Rule::exists('communes', 'id')],
-                'pie_quota_max' => 'required|integer|min:0',
-                'is_active' => 'required|boolean',
+            // 🔍 LOG DETALLADO: Información de la petición
+            Log::info('🚀 INICIO UPDATE ESTABLISHMENT', [
+                'timestamp' => now(),
+                'establishment_id' => $establishment->id,
+                'request_method' => $request->method(),
+                'request_url' => $request->url(),
+                'request_route' => $request->route()->getName(),
+                'request_params' => $request->route()->parameters(),
+                'user_id' => auth()->id(),
+                'ip_address' => $request->ip(),
+                'user_agent' => $request->userAgent()
             ]);
 
-            // Verificar que la comuna pertenece a la región seleccionada
-            $commune = Commune::find($validated['commune_id']);
-            if ($commune->region_id != $validated['region_id']) {
-                throw ValidationException::withMessages([
-                    'commune_id' => 'La comuna seleccionada no pertenece a la región especificada.'
-                ]);
-            }
+            // 🔍 LOG: Datos recibidos
+            Log::info('📥 DATOS RECIBIDOS', [
+                'raw_input' => $request->all(),
+                'validated_data' => $request->validated(),
+                'has_files' => $request->hasFile('any'),
+                'content_type' => $request->header('Content-Type'),
+                'accept_header' => $request->header('Accept')
+            ]);
 
-            // Remover region_id de los datos a insertar
-            $dataToInsert = [
-                'rbd' => $validated['rbd'],
-                'name' => $validated['name'],
-                'address' => $validated['address'],
-                'commune_id' => $validated['commune_id'],
-                'pie_quota_max' => $validated['pie_quota_max'],
-                'is_active' => $validated['is_active'],
-            ];
+            // 🔍 LOG: Estado antes de la actualización
+            Log::info('📋 ESTADO ANTES DE ACTUALIZAR', [
+                'establishment_before' => $establishment->toArray(),
+                'commune_before' => $establishment->commune ? $establishment->commune->toArray() : null,
+                'region_before' => $establishment->commune && $establishment->commune->region ? 
+                    $establishment->commune->region->toArray() : null
+            ]);
 
-            $establishment = Establishment::create($dataToInsert);
+            // 🔄 Actualizar el establecimiento
+            $updateResult = $establishment->update($request->validated());
+            
+            // 🔍 LOG: Resultado de la actualización
+            Log::info('✅ RESULTADO UPDATE', [
+                'update_success' => $updateResult,
+                'establishment_after' => $establishment->fresh()->toArray()
+            ]);
+
+            // 🔄 Cargar relaciones actualizadas
             $establishment->load(['commune.region']);
 
-            Log::info('Establecimiento creado con éxito', [
-                'id' => $establishment->id,
-                'datos' => $dataToInsert,
-                'establishment_with_relations' => $establishment->toArray()
+            // 🔍 LOG: Datos después de cargar relaciones
+            Log::info('🔗 RELACIONES CARGADAS', [
+                'establishment_with_relations' => $establishment->toArray(),
+                'commune_loaded' => $establishment->commune ? $establishment->commune->toArray() : null,
+                'region_loaded' => $establishment->commune && $establishment->commune->region ? 
+                    $establishment->commune->region->toArray() : null
             ]);
 
-            // 🆕 MODIFICACIÓN: Devolver datos completos del establecimiento recién creado
-            return redirect()->route('establishments.index')
-                ->with([
-                    'success' => 'Establecimiento creado correctamente',
-                    'newEstablishment' => new EstablishmentResource($establishment) // Usar el Resource para consistencia
-                ]);
-
-        } catch (ValidationException $ve) {
-            Log::error('Error de validación al crear establecimiento', [
-                'errors' => $ve->errors(),
-                'input' => $request->all()
+            // 🔍 LOG: Preparando respuesta
+            Log::info('📤 PREPARANDO RESPUESTA', [
+                'redirect_route' => 'establishments.index',
+                'success_message' => 'Establecimiento actualizado correctamente',
+                'response_type' => 'redirect'
             ]);
-            throw $ve;
+
+            // ✅ Respuesta exitosa
+            $response = redirect()->route('establishments.index')
+                ->with('success', 'Establecimiento actualizado correctamente');
+
+            Log::info('🎉 UPDATE COMPLETADO EXITOSAMENTE', [
+                'establishment_id' => $establishment->id,
+                'timestamp' => now(),
+                'execution_time' => microtime(true) - LARAVEL_START
+            ]);
+
+            return $response;
+
+        } catch (ValidationException $e) {
+            // 🚨 LOG: Errores de validación
+            Log::error('❌ ERROR DE VALIDACIÓN', [
+                'establishment_id' => $establishment->id,
+                'validation_errors' => $e->errors(),
+                'failed_rules' => $e->validator->failed(),
+                'input_data' => $request->all()
+            ]);
+
+            return back()->withErrors($e->errors())->withInput();
 
         } catch (Exception $e) {
-            Log::error('Error inesperado al crear establecimiento', [
-                'mensaje' => $e->getMessage(),
-                'traza' => $e->getTraceAsString(),
-                'input' => $request->all()
+            // 🚨 LOG: Error general
+            Log::error('💥 ERROR CRÍTICO EN UPDATE', [
+                'establishment_id' => $establishment->id,
+                'error_message' => $e->getMessage(),
+                'error_code' => $e->getCode(),
+                'error_file' => $e->getFile(),
+                'error_line' => $e->getLine(),
+                'stack_trace' => $e->getTraceAsString(),
+                'request_data' => $request->all(),
+                'request_method' => $request->method(),
+                'request_url' => $request->url(),
+                'timestamp' => now()
             ]);
-            return back()->withErrors('Ocurrió un error al guardar el establecimiento. Intenta nuevamente.');
+            
+            return back()->withErrors(['error' => 'Error al actualizar el establecimiento: ' . $e->getMessage()]);
         }
     }
 
-    public function update(Request $request, Establishment $establishment)
+    public function edit(Establishment $establishment)
     {
-        Log::info('=== UPDATE METHOD CALLED ===', [
+        // 🔍 LOG: Carga de formulario de edición
+        Log::info('📝 CARGANDO FORMULARIO EDICIÓN', [
             'establishment_id' => $establishment->id,
-            'request_method' => $request->method(),
-            'request_url' => $request->fullUrl(),
-            'request_data' => $request->all(),
-            'headers' => $request->headers->all(),
-            'user_agent' => $request->userAgent(),
-            'referrer' => $request->header('referer')
+            'establishment_data' => $establishment->toArray(),
+            'timestamp' => now()
         ]);
 
-        $validated = $request->validate([
-            'is_active' => 'required|boolean'
+        $establishment->load('commune.region');
+
+        return Inertia::render('Dashboard/establishments/Edit', [
+            'establishment' => new EstablishmentResource($establishment),
+            'regiones' => RegionResource::collection(Region::all()),
+            'comunas' => CommuneResource::collection(Commune::all())
+        ]);
+    }
+
+    // 🔍 Método adicional para debugging de rutas
+    public function debugRoutes(Request $request)
+    {
+        Log::info('🔍 DEBUG RUTAS', [
+            'all_routes' => collect(\Route::getRoutes())->map(function ($route) {
+                return [
+                    'methods' => $route->methods(),
+                    'uri' => $route->uri(),
+                    'name' => $route->getName(),
+                    'action' => $route->getActionName()
+                ];
+            })->filter(function ($route) {
+                return str_contains($route['uri'], 'establishment');
+            })->toArray()
         ]);
 
-        $establishment->update(['is_active' => $validated['is_active']]);
-
-        Log::info('=== UPDATE COMPLETED ===', [
-            'establishment_id' => $establishment->id,
-            'new_state' => $establishment->is_active
-        ]);
-
-        return back()->with([
-            'success' => 'Estado actualizado correctamente',
-            'updatedData' => [
-                'id' => $establishment->id,
-                'is_active' => $establishment->is_active
-            ]
-        ]);
+        return response()->json(['message' => 'Debug info logged']);
     }
 }

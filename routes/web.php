@@ -65,7 +65,7 @@ Route::middleware([
       // 👇 AQUI está la línea que necesitas agregar 👇
     Route::resource('users', UserController::class); 
 
-    Route::resource('establishments', EstablishmentController::class);
+Route::resource('establishments', EstablishmentController::class);
 
 });
 

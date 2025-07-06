@@ -1,5 +1,6 @@
 // resources/js/Pages/Dashboard/users/Users.vue - SCRIPT SECTION
 <script setup>
+/* resources\js\Pages\Dashboard\users\Users.vue */
 import { defineProps, ref } from 'vue' 
 import DashboardLayout from '@/Layouts/DashboardLayout.vue'
 import UserTable from '@/Components/Table/UserTable.vue'

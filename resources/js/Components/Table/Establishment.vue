@@ -1,12 +1,15 @@
-// 🧾 COMPONENTE TABLA SIMPLIFICADO (para Establishment.vue)
 <script setup>
-import { computed, ref, watch } from 'vue'
+/* resources\js\Components\Table\Establishment.vue */
+// 1. Importaciones necesarias
+import { computed, ref } from 'vue'
+import { router } from '@inertiajs/vue3'
 import TablaBase from '@/Components/TablaBase/TablaBase.vue'
 import ButtonAdd from '@/Components/Bottom/ButtonAdd.vue'
 import ToggleBase from '@/Components/Toggle/ToggleBase.vue'
-import { router } from '@inertiajs/vue3'
 import { PencilSquareIcon } from '@heroicons/vue/24/outline'
+import EditEstablishmentModal from '@/Components/Modal/EditEstablishmentModal.vue'
 
+// 2. Definir props con valores por defecto
 const props = defineProps({
   establishments: {
     type: Array,
@@ -15,15 +18,34 @@ const props = defineProps({
   busquedaExterna: {
     type: String,
     default: ''
+  },
+  regiones: {
+    type: Array,
+    default: () => []
+  },
+  comunas: {
+    type: Array,
+    default: () => []
   }
 })
 
-const emit = defineEmits(['openModal', 'establecimiento-actualizado'])
+// 3. Eventos emitidos - CORREGIDO
+const emit = defineEmits([
+  'openModal', 
+  'establecimiento-actualizado',
+  'establecimiento-editado'
+])
 
-// 🔄 Usar directamente los props (ya vienen filtrados del padre)
+// 4. Estados del componente
+const editModalOpen = ref(false)
+const selectedEstablishment = ref(null)
+
+// 5. Computed properties
 const establecimientos = computed(() => props.establishments || [])
+const regionesSeguras = computed(() => props.regiones || [])
+const comunasSeguras = computed(() => props.comunas || [])
 
-// Columnas configuradas para TablaBase
+// 6. Columnas de la tabla
 const columnas = [
   { titulo: 'Nombre', slot: 'nombre', sortable: true, campo: 'name' },
   { titulo: 'RBD', slot: 'rbd', sortable: true, campo: 'rbd' },
@@ -34,52 +56,52 @@ const columnas = [
   { titulo: 'Acciones', slot: 'acciones', sortable: false }
 ]
 
-// 🗑️ ELIMINADO: Filtrado local (ya se hace en el componente padre)
-// 🗑️ ELIMINADO: Filtro por región (ya se hace en el componente padre)
-
-// Navega a página edición
-function editarEstablecimiento(id) {
-  router.visit(route('establishments.edit', id))
+// 7. Función para abrir modal de edición
+function openEditModal(establishment) {
+  selectedEstablishment.value = establishment
+  editModalOpen.value = true
 }
 
-// 🔄 Toggle de estado optimista
-function toggleEstado(id, nuevoEstado) {
-  console.log('=== TOGGLE ESTADO ===')
-  console.log('ID:', id, 'Nuevo estado:', nuevoEstado)
+// 8. CORREGIDO: Función para manejar actualización desde el modal
+function handleEstablishmentUpdated(updatedData) {
+  console.log('🔄 Establecimiento actualizado:', updatedData)
+  
+  // Emitir evento al componente padre con los datos actualizados
+  emit('establecimiento-editado', selectedEstablishment.value.id, updatedData)
+  
+  // Cerrar modal
+  editModalOpen.value = false
+  selectedEstablishment.value = null
+}
 
-  // 1. 🚀 Emitir cambio al padre inmediatamente
+// 9. Función para cambiar estado (toggle)
+function toggleEstado(id, nuevoEstado) {
+  // Emitir cambio optimista al padre
   emit('establecimiento-actualizado', id, { is_active: nuevoEstado })
 
-  // 2. 🌐 Petición al servidor
-  const url = `/establishments/${id}`
-  
-  router.put(url, {
+  // Petición al servidor
+  router.put(route('establishments.update', id), {
     is_active: nuevoEstado
   }, {
     preserveScroll: true,
-    preserveState: true, // 🎯 Mantener estado para evitar recargas
-    only: [], // No necesitamos actualizar props
-    onStart: () => {
-      console.log('🚀 Actualizando estado en servidor...')
-    },
-    onSuccess: () => {
-      console.log('✅ Estado actualizado exitosamente')
-    },
+    preserveState: true,
     onError: (errors) => {
-      console.error('❌ Error al actualizar estado:', errors)
-      
-      // 🔙 Revertir cambio en caso de error
+      console.error('Error al actualizar estado:', errors)
+      // Revertir en caso de error
       emit('establecimiento-actualizado', id, { is_active: !nuevoEstado })
-      
-      // Mostrar notificación de error
       alert('Error al actualizar el estado. Por favor, intenta nuevamente.')
     }
   })
 }
+
+// 10. Función para cerrar modal
+function closeEditModal() {
+  editModalOpen.value = false
+  selectedEstablishment.value = null
+}
 </script>
 
 <template>
-  <!-- Contenedor principal del componente -->
   <div>
     <!-- 1. SECCIÓN DE CONTROLES SUPERIORES -->
     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
@@ -148,11 +170,26 @@ function toggleEstado(id, nuevoEstado) {
       <!-- Slot para columna Acciones -->
       <template #acciones="{ fila }">
         <div class="flex items-center" v-if="fila">
-          <button @click="editarEstablecimiento(fila.id)" class="text-blue-600 hover:text-blue-800">
+          <button 
+            @click="openEditModal(fila)" 
+            class="text-blue-600 hover:text-blue-800 transition-colors"
+            title="Editar establecimiento"
+          >
             <PencilSquareIcon class="w-5 h-5" />
           </button>
         </div>
       </template>
     </TablaBase>
+
+    <!-- 3. MODAL DE EDICIÓN -->
+    <EditEstablishmentModal 
+      v-if="selectedEstablishment"
+      :isOpen="editModalOpen"
+      :establishment="selectedEstablishment"
+      :regiones="regionesSeguras"  
+      :comunas="comunasSeguras"    
+      @close="closeEditModal"
+      @updated="handleEstablishmentUpdated"
+    />
   </div>
 </template>

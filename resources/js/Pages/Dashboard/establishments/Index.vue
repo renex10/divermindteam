@@ -229,6 +229,8 @@ console.log('🔍 Filtros actuales:', filters.value)
       <div v-else>
         <EstablishmentTable 
           :establishments="establishments" 
+           :regiones="regiones"
+            :comunas="comunas"
           @openModal="abrirModal"
           @establecimiento-actualizado="actualizarEstablecimiento"
         />

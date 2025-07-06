@@ -18,7 +18,6 @@ protected $fillable = [
     'rbd',
     'name',
     'address',
-    'region_id',
     'commune_id',
     'pie_quota_max',
     'is_active',
